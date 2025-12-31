@@ -9,14 +9,15 @@ from src.utils.constants import *
 class ScorePopup:
     """Animated score popup that appears when landing on platforms."""
     
-    def __init__(self, x, y, score, combo=1):
+    def __init__(self, x, y, score, combo=1, is_text=False):
         self.x = x
         self.y = y
         self.score = score
         self.combo = combo
+        self.is_text = is_text  # If True, score is a text string
         self.lifetime = 0.0
-        self.max_lifetime = 1.0
-        self.velocity_y = -100  # Float upward
+        self.max_lifetime = 1.5 if is_text else 1.0  # Text lasts longer
+        self.velocity_y = -80 if is_text else -100  # Float upward
         self.alpha = 255
     
     def update(self, dt):
@@ -41,7 +42,11 @@ class ScorePopup:
         scale = min(1.0, self.lifetime * 5)
         
         # Create text
-        if self.combo > 1:
+        if self.is_text:
+            # Display text message (for power-ups)
+            text = str(self.score)
+            color = (0, 255, 255)  # Cyan for power-ups
+        elif self.combo > 1:
             text = f"+{self.score} x{self.combo}!"
             color = (255, 215, 0)  # Gold for combo
         else:
@@ -226,16 +231,17 @@ class UIRenderer:
         text_rect = text_surface.get_rect(center=(screen.get_width() // 2, y))
         screen.blit(text_surface, text_rect)
     
-    def add_score_popup(self, x, y, score, combo=1):
+    def add_score_popup(self, x, y, score, combo=1, is_text=False):
         """
         Add an animated score popup.
         
         Args:
             x, y: World position for popup
-            score: Score value to display
+            score: Score value to display (or text string if is_text=True)
             combo: Combo multiplier
+            is_text: If True, score is treated as a text message
         """
-        self.score_popups.append(ScorePopup(x, y, score, combo))
+        self.score_popups.append(ScorePopup(x, y, score, combo, is_text))
     
     def update_score_popups(self, dt):
         """Update all score popups."""

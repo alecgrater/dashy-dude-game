@@ -100,44 +100,67 @@ This document contains a prioritized list of improvements and features to enhanc
 
 ## 🎨 Medium Priority Improvements
 
-### 5\. Enhanced Platform Variety
+### 5\. ✅ Enhanced Platform Variety
 
+**Status:** ✅ **COMPLETED** (Dec 31, 2025)
 **Description:** Add more platform types and behaviors:
 
-*   Bouncy platforms (launch player higher)
-*   Ice platforms (slippery, less friction)
-*   Conveyor platforms (move player forward/backward)
-*   Disappearing platforms (fade in/out on timer)
-*   Spring platforms (auto-jump on landing)
-*   Checkpoint platforms (respawn point)
+*   ✅ Bouncy platforms (launch player higher)
+*   ✅ Ice platforms (slippery, less friction)
+*   ✅ Conveyor platforms (move player forward/backward)
+*   ✅ Disappearing platforms (fade in/out on timer)
+*   ✅ Spring platforms (auto-jump on landing)
+*   ❌ Checkpoint platforms (respawn point) - Not implemented
 
-**Files to modify:**
+**Implementation notes:**
+*   All special platforms unlock after reaching score of 200
+*   Bouncy platforms use orange color and 1.3x bounce multiplier
+*   Ice platforms use light blue color (friction effect passive)
+*   Conveyor platforms use brown color with animated arrows showing direction
+*   Disappearing platforms fade in/out with 2s visible, 1.5s invisible cycle
+*   Spring platforms use lime green color with 2.0x launch force
+*   Platform variety increases with score progression
 
-*   `src/entities/platform.py` - add new PlatformType enum values
-*   `src/world/platform_generator.py` - add generation logic
-*   `src/states/play_state.py` - handle special platform behaviors
+**Files modified:**
+
+*   `src/entities/platform.py` - added new PlatformType enum values and behaviors
+*   `src/world/platform_generator.py` - added generation logic based on score
+*   `src/states/play_state.py` - handle special platform behaviors and effects
 
 ---
 
-### 6\. Power-ups & Collectibles
+### 6\. ✅ Power-ups & Collectibles
 
+**Status:** ✅ **COMPLETED** (Dec 31, 2025)
 **Description:** Add collectible items:
 
-*   Coins/gems for bonus points
-*   Speed boost power-up (temporary speed increase)
-*   Shield power-up (survive one fall)
-*   Magnet power-up (attract nearby collectibles)
-*   Double points power-up (temporary score multiplier)
-*   Extra jump power-up (temporary triple jump)
+*   ✅ Coins/gems for bonus points (5 points each, affected by double points)
+*   ✅ Speed boost power-up (5s duration, +150 speed)
+*   ✅ Shield power-up (survive one fall, teleports player back up)
+*   ✅ Magnet power-up (8s duration, attracts collectibles)
+*   ✅ Double points power-up (10s duration, 2x score multiplier)
+*   ✅ Extra jump power-up (15s duration, enables triple jump)
 
-**Files to create:**
+**Implementation notes:**
+*   Collectibles spawn above platforms with weighted randomness
+*   40% chance for coins, 15% chance for power-ups per platform
+*   Each collectible type has unique visual design and animations
+*   Floating, rotating, and pulsing animations for all collectibles
+*   Magnet power-up creates attraction effect pulling collectibles to player
+*   Shield creates pulsing visual effect around player
+*   Power-up indicators shown in top-left with timers
+*   Text popups for power-up collection feedback
+*   Particle effects on collection
 
-*   `src/entities/collectible.py`
-*   `src/world/collectible_spawner.py`
+**Files created:**
 
-**Files to modify:**
+*   `src/entities/collectible.py` - Collectible entity with 6 types
+*   `src/world/collectible_spawner.py` - Spawning and management system
 
-*   `src/states/play_state.py` - collision detection and effects
+**Files modified:**
+
+*   `src/states/play_state.py` - collision detection, power-up logic, and rendering
+*   `src/graphics/ui.py` - text-based score popups for power-up messages
 
 ---
 

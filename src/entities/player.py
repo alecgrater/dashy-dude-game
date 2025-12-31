@@ -109,12 +109,16 @@ class Player:
         
         # Handle input - only process new jump presses, not held
         if input_handler.jump_pressed:
-            # Check if we can activate helicopter (third press after double jump)
-            if self.can_helicopter and not self.helicopter_active and not self.on_ground:
-                sound_event = self.activate_helicopter()
-            # Otherwise try to jump
+            # If helicopter is active, cancel it and enter falling state
+            if self.helicopter_active:
+                self.deactivate_helicopter()
+                # No sound event, just cancel
+            # Prioritize jumping over helicopter if we still have jumps available
             elif self.can_jump():
                 sound_event = self.jump()
+            # Only activate helicopter if we've used all jumps
+            elif self.can_helicopter and not self.helicopter_active and not self.on_ground:
+                sound_event = self.activate_helicopter()
         
         # Variable jump height
         if input_handler.jump_released and self.velocity.y < 0:
@@ -123,8 +127,7 @@ class Player:
         # Update helicopter
         if self.helicopter_active:
             self.helicopter_time += dt
-            if self.helicopter_time >= self.helicopter_max_time:
-                self.deactivate_helicopter()
+            # No time limit - helicopter lasts until landing on platform
             
             # Override gravity with slow fall
             self.velocity.y = HELICOPTER_FALL_SPEED
@@ -179,6 +182,19 @@ class Player:
             self.velocity.x = self.base_speed + DOUBLE_JUMP_SPEED_BOOST
             
             # Squash and stretch: more dramatic for double jump
+            self.target_scale_x = 1.3
+            self.target_scale_y = 0.7
+            
+            return 'double_jump'
+        
+        elif self.jump_count == 2 and self.max_jumps > 2:
+            # Triple jump (only available with extra jump power-up)
+            self.velocity.y = DOUBLE_JUMP_VELOCITY
+            self.state = PlayerState.DOUBLE_JUMPING
+            self.jump_count = 3
+            # Helicopter already enabled from double jump
+            
+            # Squash and stretch
             self.target_scale_x = 1.3
             self.target_scale_y = 0.7
             
