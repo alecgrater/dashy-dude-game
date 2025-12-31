@@ -69,6 +69,13 @@ class Player:
         
         # Particles
         self.particle_timer = 0.0
+        
+        # Squash and stretch
+        self.scale_x = 1.0
+        self.scale_y = 1.0
+        self.target_scale_x = 1.0
+        self.target_scale_y = 1.0
+        self.squash_speed = 15.0
     
     def update(self, dt, input_handler, physics_engine):
         """
@@ -138,6 +145,9 @@ class Player:
         if self.animation_controller:
             self.animation_controller.update(dt, self.state)
         
+        # Update squash and stretch
+        self._update_squash_stretch(dt)
+        
         return sound_event
     
     def jump(self):
@@ -149,6 +159,11 @@ class Player:
             self.on_ground = False
             self.jump_count = 1
             self.coyote_time = 0
+            
+            # Squash and stretch: compress then stretch
+            self.target_scale_x = 1.2
+            self.target_scale_y = 0.8
+            
             return 'jump'
             
         elif self.jump_count == 1:
@@ -162,6 +177,10 @@ class Player:
             self.speed_boost_active = True
             self.speed_boost_timer = DOUBLE_JUMP_BOOST_DURATION
             self.velocity.x = self.base_speed + DOUBLE_JUMP_SPEED_BOOST
+            
+            # Squash and stretch: more dramatic for double jump
+            self.target_scale_x = 1.3
+            self.target_scale_y = 0.7
             
             return 'double_jump'
         
@@ -204,6 +223,10 @@ class Player:
         self.speed_boost_active = False
         self.velocity.x = self.base_speed
         
+        # Squash and stretch: squash on landing
+        self.target_scale_x = 0.8
+        self.target_scale_y = 1.2
+        
         return 'landing'
     
     def die(self):
@@ -228,6 +251,20 @@ class Player:
                 self.state = PlayerState.JUMPING
         else:
             self.state = PlayerState.FALLING
+    
+    def _update_squash_stretch(self, dt):
+        """Update squash and stretch animation."""
+        # Lerp towards target scale
+        self.scale_x += (self.target_scale_x - self.scale_x) * self.squash_speed * dt
+        self.scale_y += (self.target_scale_y - self.scale_y) * self.squash_speed * dt
+        
+        # Return to normal scale
+        self.target_scale_x += (1.0 - self.target_scale_x) * 5.0 * dt
+        self.target_scale_y += (1.0 - self.target_scale_y) * 5.0 * dt
+        
+        # Clamp scales
+        self.scale_x = max(0.5, min(1.5, self.scale_x))
+        self.scale_y = max(0.5, min(1.5, self.scale_y))
     
     def get_collision_rect(self):
         """
@@ -262,7 +299,7 @@ class Player:
     
     def render(self, screen, camera):
         """
-        Render player sprite.
+        Render player sprite with squash and stretch.
         
         Args:
             screen: pygame.Surface to draw on
@@ -277,9 +314,27 @@ class Player:
                 if not self.facing_right:
                     sprite = pygame.transform.flip(sprite, True, False)
                 
+                # Apply squash and stretch
+                if abs(self.scale_x - 1.0) > 0.01 or abs(self.scale_y - 1.0) > 0.01:
+                    new_width = int(sprite.get_width() * self.scale_x)
+                    new_height = int(sprite.get_height() * self.scale_y)
+                    sprite = pygame.transform.scale(sprite, (new_width, new_height))
+                    
+                    # Adjust position to keep bottom-center anchored
+                    pos = (
+                        pos[0] - (new_width - self.width) // 2,
+                        pos[1] - (new_height - self.height)
+                    )
+                
                 screen.blit(sprite, pos)
         else:
-            # Fallback: draw colored rectangle
+            # Fallback: draw colored rectangle with squash/stretch
             pos = self.get_render_position(camera)
+            width = int(self.width * self.scale_x)
+            height = int(self.height * self.scale_y)
+            adjusted_pos = (
+                pos[0] - (width - self.width) // 2,
+                pos[1] - (height - self.height)
+            )
             pygame.draw.rect(screen, PLAYER_PRIMARY,
-                (pos[0], pos[1], self.width, self.height))
+                (adjusted_pos[0], adjusted_pos[1], width, height))

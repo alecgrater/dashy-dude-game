@@ -22,6 +22,11 @@ class Camera:
         self.shake_amount = 0.0
         self.shake_duration = 0.0
         self.shake_offset = Vector2(0, 0)
+        
+        # Camera zoom
+        self.zoom = 1.0
+        self.target_zoom = 1.0
+        self.zoom_speed = 5.0
     
     def update(self, dt, player):
         """
@@ -52,25 +57,39 @@ class Camera:
         # Don't let camera go below 0
         self.position.y = max(0, self.position.y)
         
+        # Update zoom
+        self.zoom = lerp(self.zoom, self.target_zoom, self.zoom_speed * dt)
+        
         # Update screen shake
         if self.shake_duration > 0:
             self.shake_duration -= dt
-            self.shake_offset.x = random.uniform(-self.shake_amount, self.shake_amount)
-            self.shake_offset.y = random.uniform(-self.shake_amount, self.shake_amount)
+            # Decay shake amount over time for smoother effect
+            decay_factor = self.shake_duration / (self.shake_duration + dt) if self.shake_duration > 0 else 0
+            current_shake = self.shake_amount * decay_factor
+            self.shake_offset.x = random.uniform(-current_shake, current_shake)
+            self.shake_offset.y = random.uniform(-current_shake, current_shake)
         else:
             self.shake_offset.x = 0
             self.shake_offset.y = 0
     
-    def apply_shake(self, amount, duration):
+    def apply_shake(self, amount, duration, zoom_out=False):
         """
-        Apply screen shake effect.
+        Apply screen shake effect with optional zoom.
         
         Args:
             amount: Shake intensity in pixels
             duration: Shake duration in seconds
+            zoom_out: Whether to zoom out during shake
         """
-        self.shake_amount = amount
-        self.shake_duration = duration
+        self.shake_amount = max(self.shake_amount, amount)  # Use larger shake if already shaking
+        self.shake_duration = max(self.shake_duration, duration)
+        
+        if zoom_out:
+            self.target_zoom = 0.95  # Slight zoom out
+    
+    def reset_zoom(self):
+        """Reset zoom to normal."""
+        self.target_zoom = 1.0
     
     def world_to_screen(self, world_pos):
         """

@@ -42,11 +42,15 @@ class PlayState(BaseState):
     
     def enter(self):
         """Initialize gameplay."""
+        # Start with fade in
+        self.game.ui_renderer.start_fade(fade_in=True)
+        
         # Reset camera position
         self.camera.position.x = 0
         self.camera.position.y = 0
         self.camera.target_position.x = 0
         self.camera.target_position.y = 0
+        self.camera.reset_zoom()
         
         # Reset platform generator state
         self.platform_generator.reset()
@@ -98,6 +102,11 @@ class PlayState(BaseState):
     
     def update(self, dt):
         """Update game logic."""
+        # Update UI animations
+        self.game.ui_renderer.update_fade(dt)
+        self.game.ui_renderer.update_score_popups(dt)
+        self.game.ui_renderer.update_combo(dt)
+        
         if self.game_over:
             return
         
@@ -176,11 +185,25 @@ class PlayState(BaseState):
             if sound_event:
                 self.audio.play_sound(sound_event)
             
-            # Update score
-            self.score += SCORE_PER_PLATFORM
+            # Update combo
+            self.game.ui_renderer.add_combo()
+            combo_multiplier = self.game.ui_renderer.get_combo_multiplier()
             
-            # Screen shake on landing
-            self.camera.apply_shake(SHAKE_LANDING_AMOUNT, SHAKE_LANDING_DURATION)
+            # Update score with combo multiplier
+            score_gain = int(SCORE_PER_PLATFORM * combo_multiplier)
+            self.score += score_gain
+            
+            # Add score popup
+            self.game.ui_renderer.add_score_popup(
+                self.player.position.x + self.player.width / 2,
+                self.player.position.y,
+                score_gain,
+                combo_multiplier
+            )
+            
+            # Screen shake on landing (more intense for higher falls)
+            shake_intensity = min(SHAKE_LANDING_AMOUNT * (1 + intensity * 0.5), SHAKE_LANDING_AMOUNT * 2)
+            self.camera.apply_shake(shake_intensity, SHAKE_LANDING_DURATION)
         
         # Keep player on current platform if they're on it
         if self.player.on_ground and self.player.current_platform:
@@ -213,7 +236,14 @@ class PlayState(BaseState):
             if sound_event:
                 self.audio.play_sound(sound_event)
             self.game_over = True
-            self.camera.apply_shake(SHAKE_DEATH_AMOUNT, SHAKE_DEATH_DURATION)
+            
+            # Enhanced death shake with zoom out
+            self.camera.apply_shake(SHAKE_DEATH_AMOUNT, SHAKE_DEATH_DURATION, zoom_out=True)
+            
+            # Reset combo on death
+            self.game.ui_renderer.combo_count = 0
+            self.game.ui_renderer.combo_timer = 0.0
+            
             print(f"Game Over! Final Score: {self.score}")
         
         # Update camera
@@ -242,8 +272,25 @@ class PlayState(BaseState):
         # Render player
         self.player.render(screen, self.camera)
         
+        # Render speed lines during double jump boost
+        if self.player.speed_boost_active:
+            boost_progress = 1.0 - (self.player.speed_boost_timer / DOUBLE_JUMP_BOOST_DURATION)
+            intensity = 1.0 - boost_progress  # Fade out as boost ends
+            self.game.ui_renderer.render_speed_lines(
+                screen,
+                self.player.position.x + self.player.width / 2,
+                self.player.position.y + self.player.height / 2,
+                self.camera.position.x,
+                self.camera.position.y,
+                intensity
+            )
+        
+        # Render score popups
+        self.game.ui_renderer.render_score_popups(screen, self.camera.position.x, self.camera.position.y)
+        
         # Render UI
         self.game.ui_renderer.render_score(screen, self.score)
+        self.game.ui_renderer.render_combo(screen)
         
         # Game over message
         if self.game_over:
@@ -253,6 +300,9 @@ class PlayState(BaseState):
                 SCREEN_WIDTH // 2 - 150,
                 SCREEN_HEIGHT // 2 + 50,
                 "small")
+        
+        # Render fade overlay
+        self.game.ui_renderer.render_fade(screen)
     
     def handle_event(self, event):
         """Handle events."""

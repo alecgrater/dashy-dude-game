@@ -5,7 +5,7 @@ from enum import Enum
 import pygame
 import math
 from src.utils.constants import *
-from src.utils.math_utils import Vector2
+from src.utils.math_utils import Vector2, lerp
 
 
 class PlatformType(Enum):
@@ -45,6 +45,11 @@ class Platform:
         
         # Sprite
         self.sprite = None
+        
+        # Squash and stretch
+        self.scale_y = 1.0
+        self.target_scale_y = 1.0
+        self.squash_speed = 20.0
     
     def update(self, dt):
         """
@@ -60,6 +65,13 @@ class Platform:
             self._update_moving(dt)
         elif self.platform_type == PlatformType.CRUMBLING:
             self._update_crumbling(dt)
+        
+        # Update squash and stretch
+        self.scale_y = lerp(self.scale_y, self.target_scale_y, self.squash_speed * dt)
+        self.target_scale_y = lerp(self.target_scale_y, 1.0, 8.0 * dt)
+        
+        # Clamp scale
+        self.scale_y = max(0.5, min(1.2, self.scale_y))
     
     def _update_moving(self, dt):
         """Update moving platform position."""
@@ -81,6 +93,9 @@ class Platform:
         """Called when player lands on this platform."""
         if self.platform_type == PlatformType.CRUMBLING:
             self.player_landed = True
+        
+        # Squash effect on landing
+        self.target_scale_y = 0.7
     
     def reset(self, x, y, width, height, platform_type=PlatformType.STATIC):
         """
@@ -107,6 +122,10 @@ class Platform:
         self.crumble_timer = 0.0
         self.is_crumbling = False
         self.player_landed = False
+        
+        # Reset squash and stretch
+        self.scale_y = 1.0
+        self.target_scale_y = 1.0
     
     def get_rect(self):
         """
@@ -154,24 +173,28 @@ class Platform:
         
         pos = self.get_render_position(camera)
         
+        # Calculate scaled height
+        scaled_height = int(self.height * self.scale_y)
+        height_diff = self.height - scaled_height
+        
         # Get appropriate sprite
         sprite_key = self.platform_type.value
         if sprite_key in sprites:
             sprite = sprites[sprite_key]
             
-            # Scale sprite to match platform width
+            # Scale sprite to match platform width and squash/stretch
             if sprite:
                 scaled_sprite = pygame.transform.scale(sprite,
-                    (int(self.width), int(self.height)))
+                    (int(self.width), scaled_height))
                 
                 # Apply transparency if crumbling
                 if self.platform_type == PlatformType.CRUMBLING and self.player_landed:
                     alpha = int(255 * (1.0 - self.crumble_timer / self.crumble_delay))
                     scaled_sprite.set_alpha(alpha)
                 
-                screen.blit(scaled_sprite, pos)
+                screen.blit(scaled_sprite, (pos[0], pos[1] + height_diff))
         else:
-            # Fallback: draw colored rectangle
+            # Fallback: draw colored rectangle with squash/stretch
             color = PLATFORM_BASE
             if self.platform_type == PlatformType.MOVING:
                 color = PLATFORM_MOVING
@@ -181,4 +204,4 @@ class Platform:
                 color = PLATFORM_CRUMBLING
             
             pygame.draw.rect(screen, color,
-                (pos[0], pos[1], self.width, self.height))
+                (pos[0], pos[1] + height_diff, self.width, scaled_height))

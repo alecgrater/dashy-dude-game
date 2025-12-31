@@ -153,12 +153,6 @@ class TitleState(BaseState):
         text = font.render(title_text, True, UI_ACCENT)
         text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, animated_y))
         screen.blit(text, text_rect)
-        
-        # Render subtitle
-        subtitle_font = pygame.font.Font(None, BUTTON_FONT_SIZE)
-        subtitle = subtitle_font.render("An Endless Runner Adventure", True, UI_TEXT)
-        subtitle_rect = subtitle.get_rect(center=(SCREEN_WIDTH // 2, animated_y + 60))
-        screen.blit(subtitle, subtitle_rect)
     
     def _render_play_button(self, screen):
         """Render play button with hover effect."""
@@ -205,20 +199,65 @@ class TitleState(BaseState):
             screen.blit(text, text_rect)
     
     def _render_controls(self, screen):
-        """Render control instructions."""
+        """Render control instructions with epic styled box."""
         controls = [
             "SPACE - Jump / Double Jump / Helicopter Glide",
             "Hold SPACE after double jump to activate helicopter",
             "ESC - Quit Game"
         ]
         
-        font = pygame.font.Font(None, 28)
-        y_offset = SCREEN_HEIGHT - 120
+        font = pygame.font.Font(None, 22)  # Smaller font
         
+        # Calculate box dimensions (smaller)
+        padding = 15
+        line_height = 24
+        box_width = 450
+        box_height = len(controls) * line_height + padding * 2
+        box_x = 20  # Top left position
+        box_y = 20
+        
+        # Create a surface for the box with alpha channel
+        box_surface = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+        
+        # Draw outer glow effect (multiple layers) - purple tones
+        glow_colors = [
+            (150, 100, 200, 30),
+            (150, 100, 200, 20),
+            (150, 100, 200, 10)
+        ]
+        for i, glow_color in enumerate(glow_colors):
+            glow_offset = (i + 1) * 3
+            glow_rect = pygame.Rect(-glow_offset, -glow_offset,
+                                   box_width + glow_offset * 2,
+                                   box_height + glow_offset * 2)
+            pygame.draw.rect(box_surface, glow_color, glow_rect, border_radius=15)
+        
+        # Draw main background with solid purple
+        background_rect = pygame.Rect(0, 0, box_width, box_height)
+        pygame.draw.rect(box_surface, (100, 50, 150, 220), background_rect, border_radius=12)
+        
+        # Draw border with purple accent color
+        border_rect = pygame.Rect(0, 0, box_width, box_height)
+        pygame.draw.rect(box_surface, (180, 120, 255, 255), border_rect, 3, border_radius=12)
+        
+        # Draw inner border for extra style
+        inner_border_rect = pygame.Rect(3, 3, box_width - 6, box_height - 6)
+        pygame.draw.rect(box_surface, (200, 150, 255, 100), inner_border_rect, 1, border_radius=10)
+        
+        # Blit the box to the screen
+        screen.blit(box_surface, (box_x, box_y))
+        
+        # Render text with enhanced styling (left-aligned)
+        y_offset = box_y + padding + 5
+        text_x = box_x + padding
         for i, control in enumerate(controls):
-            text = font.render(control, True, UI_TEXT)
-            text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, y_offset + i * 30))
-            screen.blit(text, text_rect)
+            # Render shadow for depth
+            shadow = font.render(control, True, (0, 0, 0, 180))
+            screen.blit(shadow, (text_x + 2, y_offset + i * line_height + 2))
+            
+            # Render main text with bright color
+            text = font.render(control, True, (255, 255, 255))
+            screen.blit(text, (text_x, y_offset + i * line_height))
     
     def handle_event(self, event):
         """
