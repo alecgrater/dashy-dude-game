@@ -19,6 +19,7 @@ class PlatformGenerator:
         self.last_platform_x = 0
         self.last_platform_y = SCREEN_HEIGHT - 200
         self.difficulty = 1.0
+        self.score = 0
         
         # Calculate maximum jumpable distance
         self.max_jump_distance = self._calculate_max_distance()
@@ -39,15 +40,17 @@ class PlatformGenerator:
         for _ in range(10):
             self._generate_next_platform()
     
-    def update(self, camera_x, difficulty):
+    def update(self, camera_x, difficulty, score=0):
         """
         Update platform generation based on camera position.
         
         Args:
             camera_x: Camera X position in world space
             difficulty: Current difficulty level (1.0 - 3.0)
+            score: Current player score
         """
         self.difficulty = difficulty
+        self.score = score
         
         # Remove off-screen platforms (return to pool)
         new_platforms = []
@@ -140,35 +143,42 @@ class PlatformGenerator:
     
     def _choose_platform_type(self):
         """
-        Select platform type based on difficulty.
+        Select platform type based on score.
         
         Returns:
             PlatformType enum value
         """
-        # Early game: only static platforms
-        if self.difficulty < 1.5:
-            return PlatformType.STATIC
-        
-        roll = random.random()
-        
-        # Difficulty 1.5-2.5: introduce moving and small
-        if self.difficulty < 2.5:
-            if roll < 0.75:
+        # Early game (score < 200): only static, moving, and small platforms
+        if self.score < 200:
+            roll = random.random()
+            if roll < 0.70:
                 return PlatformType.STATIC
             elif roll < 0.90:
                 return PlatformType.MOVING
             else:
                 return PlatformType.SMALL
         
-        # Difficulty 2.5+: all types including crumbling
-        if roll < 0.60:
+        # Score 200+: introduce all special platform types
+        roll = random.random()
+        
+        if roll < 0.40:
             return PlatformType.STATIC
-        elif roll < 0.75:
+        elif roll < 0.52:
             return PlatformType.MOVING
-        elif roll < 0.90:
+        elif roll < 0.62:
             return PlatformType.SMALL
-        else:
+        elif roll < 0.70:
+            return PlatformType.BOUNCY
+        elif roll < 0.77:
+            return PlatformType.ICE
+        elif roll < 0.84:
+            return PlatformType.CONVEYOR
+        elif roll < 0.90:
             return PlatformType.CRUMBLING
+        elif roll < 0.95:
+            return PlatformType.DISAPPEARING
+        else:
+            return PlatformType.SPRING
     
     def _get_platform_from_pool(self):
         """

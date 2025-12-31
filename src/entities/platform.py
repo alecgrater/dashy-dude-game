@@ -14,6 +14,11 @@ class PlatformType(Enum):
     MOVING = "moving"
     SMALL = "small"
     CRUMBLING = "crumbling"
+    BOUNCY = "bouncy"
+    ICE = "ice"
+    CONVEYOR = "conveyor"
+    DISAPPEARING = "disappearing"
+    SPRING = "spring"
 
 
 class Platform:
@@ -43,6 +48,28 @@ class Platform:
         self.is_crumbling = False
         self.player_landed = False
         
+        # Bouncy platform
+        self.bounce_multiplier = 1.3  # Launch player higher (reduced from 1.5 to prevent overshooting)
+        
+        # Ice platform
+        self.ice_friction = 0.3  # Reduced friction (0-1, lower = more slippery)
+        
+        # Conveyor platform
+        self.conveyor_speed = 150.0  # pixels/second
+        self.conveyor_direction = 1  # 1 = right, -1 = left
+        
+        # Disappearing platform
+        self.disappear_timer = 0.0
+        self.disappear_interval = 2.0  # seconds visible
+        self.reappear_interval = 1.5  # seconds invisible
+        self.is_visible = True
+        self.disappear_cycle_time = 0.0
+        
+        # Spring platform
+        self.spring_force = 2.0  # Auto-jump multiplier
+        self.spring_compressed = False
+        self.spring_compression = 0.0  # 0-1 for animation
+        
         # Sprite
         self.sprite = None
         
@@ -65,6 +92,10 @@ class Platform:
             self._update_moving(dt)
         elif self.platform_type == PlatformType.CRUMBLING:
             self._update_crumbling(dt)
+        elif self.platform_type == PlatformType.DISAPPEARING:
+            self._update_disappearing(dt)
+        elif self.platform_type == PlatformType.SPRING:
+            self._update_spring(dt)
         
         # Update squash and stretch
         self.scale_y = lerp(self.scale_y, self.target_scale_y, self.squash_speed * dt)
@@ -89,13 +120,40 @@ class Platform:
                 self.is_crumbling = True
                 self.active = False
     
+    def _update_disappearing(self, dt):
+        """Update disappearing platform state."""
+        self.disappear_cycle_time += dt
+        total_cycle = self.disappear_interval + self.reappear_interval
+        
+        # Calculate position in cycle
+        cycle_position = self.disappear_cycle_time % total_cycle
+        
+        if cycle_position < self.disappear_interval:
+            self.is_visible = True
+        else:
+            self.is_visible = False
+    
+    def _update_spring(self, dt):
+        """Update spring platform compression animation."""
+        if self.spring_compressed:
+            # Decompress spring
+            self.spring_compression = max(0.0, self.spring_compression - dt * 5.0)
+            if self.spring_compression <= 0.0:
+                self.spring_compressed = False
+    
     def on_player_land(self):
         """Called when player lands on this platform."""
         if self.platform_type == PlatformType.CRUMBLING:
             self.player_landed = True
+        elif self.platform_type == PlatformType.SPRING:
+            self.spring_compressed = True
+            self.spring_compression = 1.0
         
-        # Squash effect on landing
-        self.target_scale_y = 0.7
+        # Squash effect on landing (more for spring platforms)
+        if self.platform_type == PlatformType.SPRING:
+            self.target_scale_y = 0.5
+        else:
+            self.target_scale_y = 0.7
     
     def reset(self, x, y, width, height, platform_type=PlatformType.STATIC):
         """
@@ -122,6 +180,18 @@ class Platform:
         self.crumble_timer = 0.0
         self.is_crumbling = False
         self.player_landed = False
+        
+        # Reset conveyor platform (randomize direction)
+        import random
+        self.conveyor_direction = random.choice([-1, 1])
+        
+        # Reset disappearing platform
+        self.disappear_cycle_time = 0.0
+        self.is_visible = True
+        
+        # Reset spring platform
+        self.spring_compressed = False
+        self.spring_compression = 0.0
         
         # Reset squash and stretch
         self.scale_y = 1.0
@@ -202,6 +272,62 @@ class Platform:
                 color = PLATFORM_SMALL
             elif self.platform_type == PlatformType.CRUMBLING:
                 color = PLATFORM_CRUMBLING
+            elif self.platform_type == PlatformType.BOUNCY:
+                color = (255, 165, 0)  # Orange
+            elif self.platform_type == PlatformType.ICE:
+                color = (173, 216, 230)  # Light blue
+            elif self.platform_type == PlatformType.CONVEYOR:
+                color = (139, 69, 19)  # Brown
+            elif self.platform_type == PlatformType.DISAPPEARING:
+                # Fade in/out based on visibility
+                if self.is_visible:
+                    # Calculate fade based on cycle position
+                    total_cycle = self.disappear_interval + self.reappear_interval
+                    cycle_pos = self.disappear_cycle_time % total_cycle
+                    if cycle_pos < self.disappear_interval:
+                        # Visible phase - fade out near end
+                        fade_start = self.disappear_interval - 0.5
+                        if cycle_pos > fade_start:
+                            alpha = 1.0 - ((cycle_pos - fade_start) / 0.5)
+                        else:
+                            alpha = 1.0
+                    else:
+                        alpha = 0.0
+                    color = (255, 255, 255, int(255 * alpha))  # White with alpha
+                else:
+                    return  # Don't render if invisible
+            elif self.platform_type == PlatformType.SPRING:
+                color = (50, 205, 50)  # Lime green
             
-            pygame.draw.rect(screen, color,
-                (pos[0], pos[1] + height_diff, self.width, scaled_height))
+            # Draw platform
+            if self.platform_type == PlatformType.DISAPPEARING and self.is_visible:
+                # Create surface with alpha for disappearing platforms
+                surf = pygame.Surface((int(self.width), scaled_height), pygame.SRCALPHA)
+                pygame.draw.rect(surf, color, (0, 0, int(self.width), scaled_height))
+                screen.blit(surf, (pos[0], pos[1] + height_diff))
+            else:
+                pygame.draw.rect(screen, color,
+                    (pos[0], pos[1] + height_diff, self.width, scaled_height))
+            
+            # Draw conveyor arrows
+            if self.platform_type == PlatformType.CONVEYOR:
+                arrow_color = (255, 255, 255)
+                arrow_spacing = 20
+                arrow_offset = int((self.move_time * self.conveyor_speed) % arrow_spacing)
+                for i in range(0, int(self.width), arrow_spacing):
+                    arrow_x = pos[0] + i + arrow_offset
+                    arrow_y = pos[1] + height_diff + scaled_height // 2
+                    if self.conveyor_direction > 0:
+                        # Right arrow
+                        pygame.draw.polygon(screen, arrow_color, [
+                            (arrow_x, arrow_y - 3),
+                            (arrow_x + 5, arrow_y),
+                            (arrow_x, arrow_y + 3)
+                        ])
+                    else:
+                        # Left arrow
+                        pygame.draw.polygon(screen, arrow_color, [
+                            (arrow_x + 5, arrow_y - 3),
+                            (arrow_x, arrow_y),
+                            (arrow_x + 5, arrow_y + 3)
+                        ])

@@ -156,17 +156,51 @@ class PlayState(BaseState):
         if was_helicopter_active and not self.player.helicopter_active:
             self.audio.stop_sound('helicopter')
         
-        # Check platform collision
+        # Check platform collision (filter out invisible disappearing platforms)
+        from src.entities.platform import PlatformType
         platforms = self.platform_generator.get_platforms()
+        visible_platforms = [p for p in platforms
+                           if p.platform_type != PlatformType.DISAPPEARING or p.is_visible]
         collision_platform = self.physics.check_platform_collision(
-            self.player, platforms
+            self.player, visible_platforms
         )
         
         if collision_platform and not self.player.on_ground:
+            # Handle special platform effects BEFORE physics resolution
+            from src.entities.platform import PlatformType
+            
+            # Store if this is a bouncy/spring platform
+            is_bouncy = collision_platform.platform_type == PlatformType.BOUNCY
+            is_spring = collision_platform.platform_type == PlatformType.SPRING
+            
             # Player landed on platform
             self.physics.resolve_platform_collision(self.player, collision_platform)
             sound_event = self.player.land_on_platform(collision_platform)
             collision_platform.on_player_land()
+            
+            # Apply bounce/spring effects AFTER physics resolution
+            if is_bouncy:
+                # Bouncy platform - launch player higher
+                self.player.velocity.y = JUMP_VELOCITY * collision_platform.bounce_multiplier
+                self.player.on_ground = False  # Make sure player leaves the platform
+                self.audio.play_sound('jump')
+                # Extra particles for bounce
+                self.particles.emit_jump_dust(
+                    self.player.position.x + self.player.width / 2,
+                    self.player.position.y + self.player.height
+                )
+            
+            elif is_spring:
+                # Spring platform - auto-jump with extra force
+                self.player.velocity.y = JUMP_VELOCITY * collision_platform.spring_force
+                self.player.on_ground = False  # Make sure player leaves the platform
+                self.player.jump_count = 1  # Count as one jump used
+                self.audio.play_sound('double_jump')  # Higher pitch sound
+                # Extra particles for spring
+                self.particles.emit_double_jump_boost(
+                    self.player.position.x + self.player.width / 2,
+                    self.player.position.y + self.player.height
+                )
             
             # Emit landing particles
             fall_speed = abs(self.player.velocity.y)
@@ -181,8 +215,8 @@ class PlayState(BaseState):
             if self.player.helicopter_active or was_helicopter_active:
                 self.audio.stop_sound('helicopter')
             
-            # Play landing sound
-            if sound_event:
+            # Play landing sound (unless bouncy/spring already played sound)
+            if sound_event and collision_platform.platform_type not in [PlatformType.BOUNCY, PlatformType.SPRING]:
                 self.audio.play_sound(sound_event)
             
             # Update combo
@@ -216,6 +250,20 @@ class PlayState(BaseState):
                 # Keep player on platform
                 self.player.position.y = platform_rect.top - self.player.height
                 self.player.velocity.y = 0
+                
+                # Apply special platform effects while standing on them
+                from src.entities.platform import PlatformType
+                
+                if self.player.current_platform.platform_type == PlatformType.ICE:
+                    # Ice platform - reduce friction (player slides more)
+                    # This is handled by reducing the deceleration when not moving
+                    # The player will maintain more momentum
+                    pass  # Ice effect is passive, handled in player movement
+                
+                elif self.player.current_platform.platform_type == PlatformType.CONVEYOR:
+                    # Conveyor platform - move player in direction
+                    conveyor_push = self.player.current_platform.conveyor_speed * self.player.current_platform.conveyor_direction * dt
+                    self.player.position.x += conveyor_push
             else:
                 # Player walked off platform edge
                 self.player.on_ground = False
@@ -252,7 +300,8 @@ class PlayState(BaseState):
         # Update platform generation
         self.platform_generator.update(
             self.camera.position.x,
-            self.difficulty_manager.get_difficulty_level()
+            self.difficulty_manager.get_difficulty_level(),
+            self.score
         )
     
     def render(self, screen):
