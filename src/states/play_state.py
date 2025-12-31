@@ -1,0 +1,209 @@
+"""
+Main gameplay state.
+"""
+import pygame
+from src.states.base_state import BaseState
+from src.entities.player import Player
+from src.systems.physics import PhysicsEngine
+from src.systems.camera import Camera
+from src.systems.animation import AnimationController
+from src.systems.audio import AudioManager
+from src.world.platform_generator import PlatformGenerator
+from src.world.difficulty_manager import DifficultyManager
+from src.graphics.background import Background
+from src.utils.constants import *
+from src.utils.math_utils import Vector2
+
+
+class PlayState(BaseState):
+    """
+    Main gameplay state with all game logic.
+    """
+    
+    def __init__(self, game):
+        super().__init__(game)
+        
+        # Core systems
+        self.physics = PhysicsEngine()
+        self.camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
+        self.platform_generator = PlatformGenerator()
+        self.difficulty_manager = DifficultyManager()
+        self.background = Background(SCREEN_WIDTH, SCREEN_HEIGHT)
+        self.audio = AudioManager()
+        
+        # Entities
+        self.player = None
+        
+        # Game state
+        self.score = 0
+        self.game_over = False
+    
+    def enter(self):
+        """Initialize gameplay."""
+        # Generate initial platforms first
+        self.platform_generator.generate_initial_platforms()
+        
+        # Get the first platform
+        platforms = self.platform_generator.get_platforms()
+        if platforms:
+            first_platform = platforms[0]
+            # Place player on left edge of first platform
+            player_x = first_platform.position.x + 20  # Small offset from edge
+            player_y = first_platform.position.y - (PLAYER_HEIGHT * PLAYER_SCALE)
+        else:
+            # Fallback position
+            player_x = 50
+            player_y = SCREEN_HEIGHT - 300
+        
+        # Create player at calculated position
+        self.player = Player(player_x, player_y)
+        
+        # Set player as grounded on first platform
+        if platforms:
+            self.player.on_ground = True
+            self.player.current_platform = platforms[0]
+            self.player.jump_count = 0
+        
+        # Set up player animation
+        if hasattr(self.game, 'sprites') and 'player' in self.game.sprites:
+            self.player.animation_controller = AnimationController(
+                self.game.sprites['player']
+            )
+        
+        # Reset systems
+        self.difficulty_manager.reset()
+        self.score = 0
+        self.game_over = False
+        
+        # Start background music
+        self.audio.play_music()
+        
+        print("Play state entered - Game started!")
+    
+    def exit(self):
+        """Cleanup when leaving state."""
+        # Stop background music
+        self.audio.stop_music()
+    
+    def update(self, dt):
+        """Update game logic."""
+        if self.game_over:
+            return
+        
+        # Update difficulty
+        self.difficulty_manager.update(dt)
+        
+        # Update background
+        self.background.update(dt)
+        
+        # Track helicopter state before update
+        was_helicopter_active = self.player.helicopter_active
+        
+        # Update player and handle sound events
+        sound_event = self.player.update(dt, self.game.input_handler, self.physics)
+        if sound_event:
+            if sound_event == 'helicopter':
+                # Start looping helicopter sound
+                self.audio.play_sound(sound_event, loop=True)
+            else:
+                self.audio.play_sound(sound_event)
+        
+        # Stop helicopter sound if it was deactivated
+        if was_helicopter_active and not self.player.helicopter_active:
+            self.audio.stop_sound('helicopter')
+        
+        # Check platform collision
+        platforms = self.platform_generator.get_platforms()
+        collision_platform = self.physics.check_platform_collision(
+            self.player, platforms
+        )
+        
+        if collision_platform and not self.player.on_ground:
+            # Player landed on platform
+            self.physics.resolve_platform_collision(self.player, collision_platform)
+            sound_event = self.player.land_on_platform(collision_platform)
+            collision_platform.on_player_land()
+            
+            # Stop helicopter sound if it was playing
+            if self.player.helicopter_active or was_helicopter_active:
+                self.audio.stop_sound('helicopter')
+            
+            # Play landing sound
+            if sound_event:
+                self.audio.play_sound(sound_event)
+            
+            # Update score
+            self.score += SCORE_PER_PLATFORM
+            
+            # Screen shake on landing
+            self.camera.apply_shake(SHAKE_LANDING_AMOUNT, SHAKE_LANDING_DURATION)
+        
+        # Keep player on current platform if they're on it
+        if self.player.on_ground and self.player.current_platform:
+            player_rect = self.player.get_collision_rect()
+            platform_rect = self.player.current_platform.get_rect()
+            
+            # Check if player is still above the platform horizontally
+            if (player_rect.right > platform_rect.left and
+                player_rect.left < platform_rect.right):
+                # Keep player on platform
+                self.player.position.y = platform_rect.top - self.player.height
+                self.player.velocity.y = 0
+            else:
+                # Player walked off platform edge
+                self.player.on_ground = False
+                self.player.current_platform = None
+        
+        # Check water collision (death)
+        if self.physics.check_water_collision(self.player, WATER_LEVEL):
+            # Stop helicopter sound if playing
+            self.audio.stop_sound('helicopter')
+            
+            sound_event = self.player.die()
+            if sound_event:
+                self.audio.play_sound(sound_event)
+            self.game_over = True
+            self.camera.apply_shake(SHAKE_DEATH_AMOUNT, SHAKE_DEATH_DURATION)
+            print(f"Game Over! Final Score: {self.score}")
+        
+        # Update camera
+        self.camera.update(dt, self.player)
+        
+        # Update platform generation
+        self.platform_generator.update(
+            self.camera.position.x,
+            self.difficulty_manager.get_difficulty_level()
+        )
+    
+    def render(self, screen):
+        """Render game visuals."""
+        # Render background
+        self.background.render(screen, self.camera)
+        
+        # Render platforms
+        platforms = self.platform_generator.get_platforms()
+        platform_sprites = self.game.sprites.get('platforms', {})
+        for platform in platforms:
+            platform.render(screen, self.camera, platform_sprites)
+        
+        # Render player
+        self.player.render(screen, self.camera)
+        
+        # Render UI
+        self.game.ui_renderer.render_score(screen, self.score)
+        
+        # Game over message
+        if self.game_over:
+            self.game.ui_renderer.render_title(screen, "GAME OVER")
+            self.game.ui_renderer.render_text(screen,
+                "Press SPACE to restart",
+                SCREEN_WIDTH // 2 - 150,
+                SCREEN_HEIGHT // 2 + 50,
+                "small")
+    
+    def handle_event(self, event):
+        """Handle events."""
+        if self.game_over and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                # Restart game
+                self.enter()

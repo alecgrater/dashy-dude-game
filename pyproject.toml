@@ -1,0 +1,15 @@
+[project]
+name = "endless-lake-clone"
+version = "0.1.0"
+description = "A polished endless runner game inspired by Endless Lake with Rayman-style helicopter mechanics"
+requires-python = ">=3.13.1"
+dependencies = [
+    "pygame-ce>=2.4.0",
+    "numpy>=1.26.0",
+]
+
+[tool.uv]
+# UV will use the Python version specified in .python-version
+
+[project.scripts]
+game = "main:main"
