@@ -38,15 +38,15 @@ JUMP_BUFFER_TIME = 0.15  # Input buffer before landing (seconds)
 # Platform settings
 PLATFORM_HEIGHT = 16  # Base height
 PLATFORM_SCALE = 2  # Display scale
-MIN_PLATFORM_WIDTH = 80
-MAX_PLATFORM_WIDTH = 200
-SMALL_PLATFORM_WIDTH = 60
+MIN_PLATFORM_WIDTH = 65  # Balanced between original 80 and 50
+MAX_PLATFORM_WIDTH = 150  # Balanced between original 200 and 120
+SMALL_PLATFORM_WIDTH = 50  # Balanced between original 60 and 40
 PLATFORM_SPAWN_DISTANCE = 1500  # Distance ahead to spawn platforms
 
 # Platform generation
-MIN_GAP = 100  # Minimum horizontal gap between platforms
-MAX_GAP_BASE = 200  # Base maximum gap
-GAP_INCREASE_PER_DIFFICULTY = 50  # Additional gap per difficulty level
+MIN_GAP = 120  # Increased from 100 for more challenge
+MAX_GAP_BASE = 250  # Increased from 200 for more challenge
+GAP_INCREASE_PER_DIFFICULTY = 60  # Increased from 50 for more challenge
 
 # Difficulty progression
 BASE_GAME_SPEED = 300.0  # pixels/second

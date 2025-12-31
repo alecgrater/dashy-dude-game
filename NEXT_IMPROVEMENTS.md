@@ -54,9 +54,9 @@ This document contains a prioritized list of improvements and features to enhanc
 
 ---
 
-### 3\. Particle Effects System
+### 3\. ✅ Particle Effects System
 
-**Status:** Partially implemented (constants defined, no visual particles)  
+**Status:** ✅ **COMPLETED** (Dec 31, 2025)  
 **Description:** Add visual feedback particles:
 
 *   Dust particles on jump
@@ -321,10 +321,10 @@ Run the game with: uv run python main.py
 ✅ Animated sprites for all player states  
 ✅ Procedurally generated graphics  
 ✅ **Title screen with animated logo, play button, and controls**  
-✅ **Audio system with procedural sound effects and background music**
+✅ **Audio system with procedural sound effects and background music**  
+✅ **Particle effects system with dust, landing, helicopter, boost, splash, and crumble particles**
 
 **Not Yet Implemented:**  
-❌ Particle effects  
 ❌ High score persistence  
 ❌ Power-ups and collectibles  
 ❌ Tutorial system  

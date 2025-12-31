@@ -11,6 +11,7 @@ from src.systems.audio import AudioManager
 from src.world.platform_generator import PlatformGenerator
 from src.world.difficulty_manager import DifficultyManager
 from src.graphics.background import Background
+from src.graphics.particles import ParticleSystem
 from src.utils.constants import *
 from src.utils.math_utils import Vector2
 
@@ -30,6 +31,7 @@ class PlayState(BaseState):
         self.difficulty_manager = DifficultyManager()
         self.background = Background(SCREEN_WIDTH, SCREEN_HEIGHT)
         self.audio = AudioManager()
+        self.particles = ParticleSystem()
         
         # Entities
         self.player = None
@@ -40,7 +42,16 @@ class PlayState(BaseState):
     
     def enter(self):
         """Initialize gameplay."""
-        # Generate initial platforms first
+        # Reset camera position
+        self.camera.position.x = 0
+        self.camera.position.y = 0
+        self.camera.target_position.x = 0
+        self.camera.target_position.y = 0
+        
+        # Reset platform generator state
+        self.platform_generator.reset()
+        
+        # Generate initial platforms
         self.platform_generator.generate_initial_platforms()
         
         # Get the first platform
@@ -96,17 +107,41 @@ class PlayState(BaseState):
         # Update background
         self.background.update(dt)
         
+        # Update particles
+        self.particles.update(dt)
+        
         # Track helicopter state before update
         was_helicopter_active = self.player.helicopter_active
+        was_on_ground = self.player.on_ground
         
         # Update player and handle sound events
         sound_event = self.player.update(dt, self.game.input_handler, self.physics)
         if sound_event:
-            if sound_event == 'helicopter':
+            # Emit particles based on action
+            player_center_x = self.player.position.x + self.player.width / 2
+            player_bottom_y = self.player.position.y + self.player.height
+            
+            if sound_event == 'jump':
+                # Emit dust particles on jump
+                self.particles.emit_jump_dust(player_center_x, player_bottom_y)
+            elif sound_event == 'double_jump':
+                # Emit speed boost particles on double jump
+                self.particles.emit_double_jump_boost(player_center_x, player_bottom_y)
+            elif sound_event == 'helicopter':
                 # Start looping helicopter sound
+                self.audio.play_sound(sound_event, loop=True)
+            
+            # Play sound
+            if sound_event == 'helicopter':
                 self.audio.play_sound(sound_event, loop=True)
             else:
                 self.audio.play_sound(sound_event)
+        
+        # Emit helicopter trail particles continuously while active
+        if self.player.helicopter_active:
+            player_center_x = self.player.position.x + self.player.width / 2
+            player_center_y = self.player.position.y + self.player.height / 2
+            self.particles.emit_helicopter_trail(player_center_x, player_center_y, dt)
         
         # Stop helicopter sound if it was deactivated
         if was_helicopter_active and not self.player.helicopter_active:
@@ -123,6 +158,15 @@ class PlayState(BaseState):
             self.physics.resolve_platform_collision(self.player, collision_platform)
             sound_event = self.player.land_on_platform(collision_platform)
             collision_platform.on_player_land()
+            
+            # Emit landing particles
+            fall_speed = abs(self.player.velocity.y)
+            intensity = min(fall_speed / 500.0, 2.0)  # Scale with fall speed
+            self.particles.emit_landing_impact(
+                self.player.position.x + self.player.width / 2,
+                self.player.position.y + self.player.height,
+                intensity
+            )
             
             # Stop helicopter sound if it was playing
             if self.player.helicopter_active or was_helicopter_active:
@@ -156,6 +200,12 @@ class PlayState(BaseState):
         
         # Check water collision (death)
         if self.physics.check_water_collision(self.player, WATER_LEVEL):
+            # Emit water splash particles
+            self.particles.emit_water_splash(
+                self.player.position.x + self.player.width / 2,
+                WATER_LEVEL
+            )
+            
             # Stop helicopter sound if playing
             self.audio.stop_sound('helicopter')
             
@@ -185,6 +235,9 @@ class PlayState(BaseState):
         platform_sprites = self.game.sprites.get('platforms', {})
         for platform in platforms:
             platform.render(screen, self.camera, platform_sprites)
+        
+        # Render particles (behind player)
+        self.particles.draw(screen, self.camera.position.x, self.camera.position.y)
         
         # Render player
         self.player.render(screen, self.camera)

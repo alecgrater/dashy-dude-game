@@ -50,8 +50,14 @@ class PlatformGenerator:
         self.difficulty = difficulty
         
         # Remove off-screen platforms (return to pool)
-        self.platforms = [p for p in self.platforms
-                         if p.position.x + p.width > camera_x - 200]
+        new_platforms = []
+        for p in self.platforms:
+            if p.position.x + p.width > camera_x - 200:
+                new_platforms.append(p)
+            else:
+                # Deactivate platform when removing it
+                p.active = False
+        self.platforms = new_platforms
         
         # Generate new platforms ahead of camera
         while self.last_platform_x < camera_x + PLATFORM_SPAWN_DISTANCE:
@@ -64,29 +70,41 @@ class PlatformGenerator:
     def _generate_next_platform(self):
         """Generate the next platform in the sequence."""
         # Calculate gap based on difficulty
-        # Make platforms reachable with single jump OR single jump + helicopter
         min_gap = MIN_GAP
         max_gap = MAX_GAP_BASE + (self.difficulty * GAP_INCREASE_PER_DIFFICULTY)
         
-        # Calculate single jump distance (without double jump or helicopter)
+        # Calculate jump distances for different abilities
         single_jump_distance = calculate_jump_distance(
             PLAYER_RUN_SPEED, JUMP_VELOCITY, GRAVITY
         )
         
-        # Add helicopter distance for max reachable
+        # Double jump adds extra distance from speed boost
+        double_jump_boost_distance = DOUBLE_JUMP_SPEED_BOOST * DOUBLE_JUMP_BOOST_DURATION
+        double_jump_distance = calculate_jump_distance(
+            PLAYER_RUN_SPEED + DOUBLE_JUMP_SPEED_BOOST, DOUBLE_JUMP_VELOCITY, GRAVITY
+        )
+        
+        # Helicopter adds glide distance
         helicopter_distance = PLAYER_RUN_SPEED * HELICOPTER_DURATION
         max_reachable = single_jump_distance + helicopter_distance
         
-        # Ensure gap is jumpable - use 70% of max reachable distance
-        max_gap = min(max_gap, max_reachable * 0.70)
+        # Ensure max gap doesn't exceed what's possible with helicopter
+        max_gap = min(max_gap, max_reachable * 0.85)
         
-        # Create variety: 60% easy jumps, 40% need helicopter
-        if random.random() < 0.6:
-            # Easy jump - reachable with single jump only
-            gap = random.uniform(min_gap, single_jump_distance * 0.75)
+        # Create three distinct jump types with variety
+        roll = random.random()
+        
+        if roll < 0.35:
+            # Easy jump - single jump only (35% of platforms)
+            gap = random.uniform(min_gap, single_jump_distance * 0.65)
+        elif roll < 0.65:
+            # Medium jump - requires double jump (30% of platforms)
+            # Gap is beyond single jump but within double jump range
+            gap = random.uniform(single_jump_distance * 0.70, double_jump_distance * 0.80)
         else:
-            # Harder jump - requires helicopter
-            gap = random.uniform(single_jump_distance * 0.80, max_gap)
+            # Hard jump - requires helicopter (35% of platforms)
+            # Gap is beyond double jump, needs helicopter glide
+            gap = random.uniform(double_jump_distance * 0.85, max_gap)
         
         # Choose platform type based on difficulty
         platform_type = self._choose_platform_type()
@@ -199,6 +217,10 @@ class PlatformGenerator:
     
     def reset(self):
         """Reset generator for new game."""
+        # Deactivate all platforms in the pool
+        for platform in self.platform_pool:
+            platform.active = False
+        
         self.platforms = []
         self.last_platform_x = 0
         self.last_platform_y = SCREEN_HEIGHT - 200
