@@ -61,6 +61,15 @@ CAMERA_PLAYER_OFFSET_X = 0.3  # Player position as ratio of screen width
 CAMERA_LOOK_AHEAD = 100  # Extra pixels to look ahead
 CAMERA_VERTICAL_DEADZONE = 200  # Vertical pixels before camera moves
 
+# Advanced camera effects
+CAMERA_ZOOM_MIN = 0.95  # Minimum zoom (zoomed out)
+CAMERA_ZOOM_MAX = 1.05  # Maximum zoom (zoomed in)
+CAMERA_ZOOM_SPEED_THRESHOLD = 500.0  # Speed at which zoom starts changing
+CAMERA_ANTICIPATION_DISTANCE = 150  # Pixels to look ahead based on velocity
+CAMERA_ANTICIPATION_SMOOTHING = 0.05  # How smoothly to apply anticipation
+CAMERA_SHAKE_FALL_MULTIPLIER = 0.02  # Shake intensity per pixel fallen
+CAMERA_MAX_SHAKE_FROM_FALL = 20.0  # Maximum shake from falling
+
 # Screen shake
 SHAKE_LANDING_AMOUNT = 5.0  # pixels
 SHAKE_LANDING_DURATION = 0.1  # seconds

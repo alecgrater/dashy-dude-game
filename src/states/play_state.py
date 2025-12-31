@@ -286,9 +286,14 @@ class PlayState(BaseState):
                 combo_multiplier
             )
             
-            # Screen shake on landing (more intense for higher falls)
-            shake_intensity = min(SHAKE_LANDING_AMOUNT * (1 + intensity * 0.5), SHAKE_LANDING_AMOUNT * 2)
-            self.camera.apply_shake(shake_intensity, SHAKE_LANDING_DURATION)
+            # Screen shake on landing (intensity based on fall distance)
+            fall_distance = self.camera.get_fall_distance()
+            self.camera.apply_shake(
+                SHAKE_LANDING_AMOUNT,
+                SHAKE_LANDING_DURATION,
+                fall_distance=fall_distance
+            )
+            self.camera.reset_fall_distance()
         
         # Keep player on current platform if they're on it
         if self.player.on_ground and self.player.current_platform:
@@ -374,8 +379,15 @@ class PlayState(BaseState):
                     self.audio.play_sound(sound_event)
                 self.game_over = True
                 
-                # Enhanced death shake with zoom out
-                self.camera.apply_shake(SHAKE_DEATH_AMOUNT, SHAKE_DEATH_DURATION, zoom_out=True)
+                # Enhanced death shake with zoom out and fall distance
+                fall_distance = self.camera.get_fall_distance()
+                self.camera.apply_shake(
+                    SHAKE_DEATH_AMOUNT,
+                    SHAKE_DEATH_DURATION,
+                    zoom_out=True,
+                    fall_distance=fall_distance
+                )
+                self.camera.reset_fall_distance()
                 
                 # Reset combo on death
                 self.game.ui_renderer.combo_count = 0
