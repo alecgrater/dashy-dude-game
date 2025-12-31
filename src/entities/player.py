@@ -113,11 +113,12 @@ class Player:
             if self.helicopter_active:
                 self.deactivate_helicopter()
                 # No sound event, just cancel
-            # Prioritize jumping over helicopter if we still have jumps available
+            # Prioritize jumping if we still have jumps available
             elif self.can_jump():
                 sound_event = self.jump()
-            # Only activate helicopter if we've used all jumps
-            elif self.can_helicopter and not self.helicopter_active and not self.on_ground:
+            # Only activate helicopter if we've used both jumps (jump_count >= 2)
+            # and we're not on the ground
+            elif self.can_helicopter and not self.helicopter_active and not self.on_ground and self.jump_count >= 2:
                 sound_event = self.activate_helicopter()
         
         # Variable jump height
@@ -325,6 +326,12 @@ class Player:
             sprite = self.animation_controller.get_current_sprite()
             if sprite:
                 pos = self.get_render_position(camera)
+                
+                # Adjust position for helicopter sprite (which is taller due to rotor)
+                if self.state == PlayerState.HELICOPTER:
+                    # Helicopter sprite is 8 pixels taller (scaled by PLAYER_SCALE)
+                    # Offset it down so the body aligns with the collision box
+                    pos = (pos[0], pos[1] - (8 * PLAYER_SCALE))
                 
                 # Flip sprite if facing left
                 if not self.facing_right:

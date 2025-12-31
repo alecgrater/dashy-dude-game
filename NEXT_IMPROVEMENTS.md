@@ -164,25 +164,36 @@ This document contains a prioritized list of improvements and features to enhanc
 
 ---
 
-### 7\. High Score System
+### 7\. ✅ High Score System
 
+**Status:** ✅ **COMPLETED** (Dec 31, 2025)
 **Description:** Implement persistent high scores:
 
-*   Save top 10 scores to file
-*   Display on title screen
-*   Show personal best during gameplay
-*   Add player name entry for high scores
-*   Track statistics (total jumps, total distance, etc.)
+*   ✅ Save top 10 scores to file (JSON format)
+*   ✅ Display on title screen (top 5 with rank colors)
+*   ✅ Show personal best during gameplay
+*   ✅ Track statistics (total jumps, double jumps, helicopter uses, platforms landed, collectibles, max combo, distance traveled, play time)
+*   ✅ New high score detection and rank display on game over
+*   ❌ Player name entry for high scores - Not implemented (uses default "Player")
 
-**Files to create:**
+**Implementation notes:**
+*   High scores saved to `high_scores.json` in game directory
+*   Top 10 scores maintained, sorted by score descending
+*   Title screen displays top 5 with gold/silver/bronze colors for top 3
+*   During gameplay, personal best shown below current score
+*   Game over screen shows "NEW HIGH SCORE!" if applicable with rank
+*   Comprehensive statistics tracked: jumps, double jumps, helicopter uses, platforms landed, collectibles gathered, max combo, distance traveled, and play time
+*   Statistics saved with each high score entry for future analysis
 
-*   `src/systems/save_system.py`
+**Files created:**
 
-**Files to modify:**
+*   `src/systems/save_system.py` - SaveSystem class with HighScoreEntry
 
-*   `src/states/title_state.py` - display high scores
-*   `src/states/play_state.py` - track statistics
-*   `src/graphics/ui.py` - high score display
+**Files modified:**
+
+*   `src/states/title_state.py` - integrated SaveSystem, displays top 5 high scores with rank colors
+*   `src/states/play_state.py` - tracks all statistics, checks for new high scores on game over
+*   `src/graphics/ui.py` - updated render_score to show personal best
 
 ---
 
@@ -278,19 +289,38 @@ This document contains a prioritized list of improvements and features to enhanc
 
 ---
 
-### 15\. Customization Options
+### 15\. ✅ Customization Options
 
+**Status:** ✅ **COMPLETED** (Dec 31, 2025)
 **Description:** Allow player customization:
 
-*   Character color schemes
-*   Platform themes (wood, metal, crystal, etc.)
-*   Background themes (ocean, desert, space, etc.)
-*   Unlock system for cosmetics
+*   ✅ Character color schemes (6 themes: Classic, Blue, Green, Purple, Gold, Rainbow)
+*   ✅ Platform themes (6 themes: Grass, Wood, Metal, Crystal, Lava, Ice)
+*   ✅ Background themes (6 themes: Ocean, Desert, Space, Sunset, Night, Forest)
+*   ✅ Unlock system for cosmetics (based on high scores)
+*   ✅ Customization menu accessible from title screen
+*   ✅ Persistent storage of customization choices
 
-**Files to modify:**
+**Implementation notes:**
+*   Created comprehensive customization system with 18 total themes
+*   Each theme unlocks at specific high score milestones (0-2000 points)
+*   Customization menu features tabbed interface for Player/Platform/Background categories
+*   Live preview of selected themes in customization menu
+*   All themes persist across game sessions via save system
+*   Themes apply to both title screen and gameplay
+*   Visual indicators show locked/unlocked status and unlock requirements
 
-*   `src/graphics/sprite_generator.py` - color variations
-*   `src/graphics/background.py` - theme variations
+**Files created:**
+*   `src/systems/customization.py` - CustomizationSystem with theme definitions and unlock logic
+*   `src/states/customization_state.py` - Interactive customization menu state
+
+**Files modified:**
+*   `src/graphics/sprite_generator.py` - Added dynamic color support for player and platforms
+*   `src/graphics/background.py` - Added dynamic color support for sky and water
+*   `src/systems/save_system.py` - Added customization persistence
+*   `src/game.py` - Integrated customization system initialization
+*   `src/states/title_state.py` - Added "Customize" button and menu access
+*   `src/states/play_state.py` - Applied customization to gameplay
 
 ---
 

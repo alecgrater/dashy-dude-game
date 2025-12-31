@@ -86,13 +86,14 @@ class UIRenderer:
         self.fade_alpha = 0  # For state transitions
         self.fade_direction = 0  # 0=none, 1=fade in, -1=fade out
     
-    def render_score(self, screen, score):
+    def render_score(self, screen, score, high_score=0):
         """
-        Render score display.
+        Render score display with optional high score.
         
         Args:
             screen: pygame.Surface to draw on
             score: Current score value
+            high_score: High score to display (optional)
         """
         score_text = self.font_medium.render(f"Score: {score}", True, UI_TEXT)
         score_shadow = self.font_medium.render(f"Score: {score}", True, UI_TEXT_SHADOW)
@@ -101,6 +102,15 @@ class UIRenderer:
         screen.blit(score_shadow, (UI_PADDING + 2, UI_PADDING + 2))
         # Draw text
         screen.blit(score_text, (UI_PADDING, UI_PADDING))
+        
+        # Draw high score below current score if available
+        if high_score > 0:
+            high_score_text = self.font_small.render(f"Best: {high_score}", True, UI_ACCENT)
+            high_score_shadow = self.font_small.render(f"Best: {high_score}", True, UI_TEXT_SHADOW)
+            
+            y_offset = UI_PADDING + 40
+            screen.blit(high_score_shadow, (UI_PADDING + 2, y_offset + 2))
+            screen.blit(high_score_text, (UI_PADDING, y_offset))
     
     def render_title(self, screen, title):
         """

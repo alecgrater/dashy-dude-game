@@ -5,6 +5,7 @@ Creates modern pixel art style sprites at runtime.
 import pygame
 import math
 from src.utils.constants import *
+from typing import Dict, Tuple, Optional
 
 
 class SpriteGenerator:
@@ -13,8 +14,40 @@ class SpriteGenerator:
     No external assets needed - everything is drawn programmatically.
     """
     
-    def __init__(self):
+    def __init__(self, player_colors: Optional[Dict[str, Tuple[int, int, int]]] = None,
+                 platform_colors: Optional[Dict[str, Tuple[int, int, int]]] = None):
+        """
+        Initialize sprite generator with optional custom colors.
+        
+        Args:
+            player_colors: Dictionary with 'primary', 'secondary', 'accent', 'outline' colors
+            platform_colors: Dictionary with platform color scheme
+        """
         self.sprite_cache = {}
+        self.player_colors = player_colors or {
+            'primary': PLAYER_PRIMARY,
+            'secondary': PLAYER_SECONDARY,
+            'accent': PLAYER_ACCENT,
+            'outline': PLAYER_OUTLINE,
+        }
+        self.platform_colors = platform_colors or {
+            'base': PLATFORM_BASE,
+            'highlight': PLATFORM_HIGHLIGHT,
+            'top': PLATFORM_GRASS,
+            'moving': PLATFORM_MOVING,
+            'small': PLATFORM_SMALL,
+            'crumbling': PLATFORM_CRUMBLING,
+        }
+    
+    def set_player_colors(self, colors: Dict[str, Tuple[int, int, int]]):
+        """Update player colors and clear cache."""
+        self.player_colors = colors
+        self.sprite_cache.pop('player', None)
+    
+    def set_platform_colors(self, colors: Dict[str, Tuple[int, int, int]]):
+        """Update platform colors and clear cache."""
+        self.platform_colors = colors
+        self.sprite_cache.pop('platforms', None)
     
     def generate_all_sprites(self):
         """
@@ -59,14 +92,14 @@ class SpriteGenerator:
             
             # Body (rounded rectangle)
             body_rect = pygame.Rect(8, 8 + offset_y, 16, 20)
-            pygame.draw.rect(surface, PLAYER_PRIMARY, body_rect, border_radius=4)
-            pygame.draw.rect(surface, PLAYER_OUTLINE, body_rect, 2, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['primary'], body_rect, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['outline'], body_rect, 2, border_radius=4)
             
             # Eyes
-            pygame.draw.circle(surface, PLAYER_ACCENT, (13, 14 + offset_y), 2)
-            pygame.draw.circle(surface, PLAYER_ACCENT, (19, 14 + offset_y), 2)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (13, 14 + offset_y), 2, 1)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (19, 14 + offset_y), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['accent'], (13, 14 + offset_y), 2)
+            pygame.draw.circle(surface, self.player_colors['accent'], (19, 14 + offset_y), 2)
+            pygame.draw.circle(surface, self.player_colors['outline'], (13, 14 + offset_y), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['outline'], (19, 14 + offset_y), 2, 1)
             
             # Scale up
             scaled = pygame.transform.scale(surface,
@@ -86,23 +119,23 @@ class SpriteGenerator:
             
             # Body
             body_rect = pygame.Rect(8, 6 + bob, 16, 20)
-            pygame.draw.rect(surface, PLAYER_PRIMARY, body_rect, border_radius=4)
-            pygame.draw.rect(surface, PLAYER_OUTLINE, body_rect, 2, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['primary'], body_rect, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['outline'], body_rect, 2, border_radius=4)
             
             # Legs (alternating)
             leg_offset = 2 if i % 2 == 0 else -2
             # Left leg
-            pygame.draw.rect(surface, PLAYER_SECONDARY,
+            pygame.draw.rect(surface, self.player_colors['secondary'],
                 (11 + leg_offset, 24 + bob, 4, 6))
             # Right leg
-            pygame.draw.rect(surface, PLAYER_SECONDARY,
+            pygame.draw.rect(surface, self.player_colors['secondary'],
                 (17 - leg_offset, 24 + bob, 4, 6))
             
             # Eyes
-            pygame.draw.circle(surface, PLAYER_ACCENT, (13, 12 + bob), 2)
-            pygame.draw.circle(surface, PLAYER_ACCENT, (19, 12 + bob), 2)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (13, 12 + bob), 2, 1)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (19, 12 + bob), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['accent'], (13, 12 + bob), 2)
+            pygame.draw.circle(surface, self.player_colors['accent'], (19, 12 + bob), 2)
+            pygame.draw.circle(surface, self.player_colors['outline'], (13, 12 + bob), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['outline'], (19, 12 + bob), 2, 1)
             
             scaled = pygame.transform.scale(surface,
                 (PLAYER_WIDTH * PLAYER_SCALE, PLAYER_HEIGHT * PLAYER_SCALE))
@@ -124,15 +157,15 @@ class SpriteGenerator:
             else:  # Falling
                 body_rect = pygame.Rect(8, 8, 16, 20)
             
-            pygame.draw.rect(surface, PLAYER_PRIMARY, body_rect, border_radius=4)
-            pygame.draw.rect(surface, PLAYER_OUTLINE, body_rect, 2, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['primary'], body_rect, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['outline'], body_rect, 2, border_radius=4)
             
             # Eyes (excited)
             eye_y = body_rect.top + 6
-            pygame.draw.circle(surface, PLAYER_ACCENT, (13, eye_y), 2)
-            pygame.draw.circle(surface, PLAYER_ACCENT, (19, eye_y), 2)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (13, eye_y), 2, 1)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (19, eye_y), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['accent'], (13, eye_y), 2)
+            pygame.draw.circle(surface, self.player_colors['accent'], (19, eye_y), 2)
+            pygame.draw.circle(surface, self.player_colors['outline'], (13, eye_y), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['outline'], (19, eye_y), 2, 1)
             
             scaled = pygame.transform.scale(surface,
                 (PLAYER_WIDTH * PLAYER_SCALE, PLAYER_HEIGHT * PLAYER_SCALE))
@@ -155,17 +188,17 @@ class SpriteGenerator:
             else:
                 body_rect = pygame.Rect(10, 8, 12, 20)
             
-            pygame.draw.rect(surface, PLAYER_PRIMARY, body_rect, border_radius=4)
-            pygame.draw.rect(surface, PLAYER_OUTLINE, body_rect, 2, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['primary'], body_rect, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['outline'], body_rect, 2, border_radius=4)
             
             # Eyes
-            pygame.draw.circle(surface, PLAYER_ACCENT, (16, 14), 2)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (16, 14), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['accent'], (16, 14), 2)
+            pygame.draw.circle(surface, self.player_colors['outline'], (16, 14), 2, 1)
             
             # Motion lines
             for j in range(3):
                 line_y = 10 + j * 6
-                pygame.draw.line(surface, PLAYER_SECONDARY,
+                pygame.draw.line(surface, self.player_colors['secondary'],
                     (4, line_y), (8, line_y), 2)
             
             scaled = pygame.transform.scale(surface,
@@ -175,40 +208,41 @@ class SpriteGenerator:
         return frames
     
     def _generate_helicopter_frames(self):
-        """Generate 4-frame helicopter animation with spinning rotor."""
+        """Generate 8-frame helicopter animation with smooth spinning rotor."""
         frames = []
-        for i in range(4):
+        for i in range(8):
             surface = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT + 8), pygame.SRCALPHA)
             
-            # Body
-            body_rect = pygame.Rect(8, 12, 16, 18)
-            pygame.draw.rect(surface, PLAYER_PRIMARY, body_rect, border_radius=4)
-            pygame.draw.rect(surface, PLAYER_OUTLINE, body_rect, 2, border_radius=4)
+            # Body with slight bobbing motion
+            bob = int(math.sin(i * math.pi / 4) * 1)
+            body_rect = pygame.Rect(8, 12 + bob, 16, 18)
+            pygame.draw.rect(surface, self.player_colors['primary'], body_rect, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['outline'], body_rect, 2, border_radius=4)
             
-            # Rotor (spinning)
-            rotor_angle = i * 90
+            # Rotor (spinning) - 45 degrees per frame for smooth rotation
+            rotor_angle = i * 45
             rotor_length = 12
-            center_x, center_y = 16, 8
+            center_x, center_y = 16, 8 + bob
             
             # Draw rotor blades
             for angle in [rotor_angle, rotor_angle + 180]:
                 rad = math.radians(angle)
                 end_x = center_x + math.cos(rad) * rotor_length
                 end_y = center_y + math.sin(rad) * rotor_length
-                pygame.draw.line(surface, PLAYER_ACCENT,
+                pygame.draw.line(surface, self.player_colors['accent'],
                     (center_x, center_y), (end_x, end_y), 3)
-                pygame.draw.line(surface, PLAYER_OUTLINE,
+                pygame.draw.line(surface, self.player_colors['outline'],
                     (center_x, center_y), (end_x, end_y), 1)
             
             # Rotor center
-            pygame.draw.circle(surface, PLAYER_SECONDARY, (center_x, center_y), 3)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (center_x, center_y), 3, 1)
+            pygame.draw.circle(surface, self.player_colors['secondary'], (center_x, center_y), 3)
+            pygame.draw.circle(surface, self.player_colors['outline'], (center_x, center_y), 3, 1)
             
             # Eyes (determined)
-            pygame.draw.circle(surface, PLAYER_ACCENT, (13, 18), 2)
-            pygame.draw.circle(surface, PLAYER_ACCENT, (19, 18), 2)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (13, 18), 2, 1)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (19, 18), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['accent'], (13, 18 + bob), 2)
+            pygame.draw.circle(surface, self.player_colors['accent'], (19, 18 + bob), 2)
+            pygame.draw.circle(surface, self.player_colors['outline'], (13, 18 + bob), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['outline'], (19, 18 + bob), 2, 1)
             
             scaled = pygame.transform.scale(surface,
                 (PLAYER_WIDTH * PLAYER_SCALE, (PLAYER_HEIGHT + 8) * PLAYER_SCALE))
@@ -224,14 +258,14 @@ class SpriteGenerator:
             
             # Stretched body
             body_rect = pygame.Rect(9, 6, 14, 24)
-            pygame.draw.rect(surface, PLAYER_PRIMARY, body_rect, border_radius=4)
-            pygame.draw.rect(surface, PLAYER_OUTLINE, body_rect, 2, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['primary'], body_rect, border_radius=4)
+            pygame.draw.rect(surface, self.player_colors['outline'], body_rect, 2, border_radius=4)
             
             # Eyes (worried)
-            pygame.draw.circle(surface, PLAYER_ACCENT, (13, 12), 2)
-            pygame.draw.circle(surface, PLAYER_ACCENT, (19, 12), 2)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (13, 12), 2, 1)
-            pygame.draw.circle(surface, PLAYER_OUTLINE, (19, 12), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['accent'], (13, 12), 2)
+            pygame.draw.circle(surface, self.player_colors['accent'], (19, 12), 2)
+            pygame.draw.circle(surface, self.player_colors['outline'], (13, 12), 2, 1)
+            pygame.draw.circle(surface, self.player_colors['outline'], (19, 12), 2, 1)
             
             scaled = pygame.transform.scale(surface,
                 (PLAYER_WIDTH * PLAYER_SCALE, PLAYER_HEIGHT * PLAYER_SCALE))
@@ -260,13 +294,13 @@ class SpriteGenerator:
         surface = pygame.Surface((width, height), pygame.SRCALPHA)
         
         # Grass top
-        pygame.draw.rect(surface, PLATFORM_GRASS, (0, 0, width, 4))
+        pygame.draw.rect(surface, self.platform_colors['top'], (0, 0, width, 4))
         
         # Main body
-        pygame.draw.rect(surface, PLATFORM_BASE, (0, 4, width, height - 4))
+        pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
         
         # Highlight
-        pygame.draw.rect(surface, PLATFORM_HIGHLIGHT, (0, 4, width, 2))
+        pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
         
         # Scale up
         scaled = pygame.transform.scale(surface,
@@ -281,17 +315,17 @@ class SpriteGenerator:
         surface = pygame.Surface((width, height), pygame.SRCALPHA)
         
         # Purple grass top
-        pygame.draw.rect(surface, PLATFORM_MOVING, (0, 0, width, 4))
+        pygame.draw.rect(surface, self.platform_colors['moving'], (0, 0, width, 4))
         
         # Main body
-        pygame.draw.rect(surface, PLATFORM_BASE, (0, 4, width, height - 4))
+        pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
         
         # Highlight
-        pygame.draw.rect(surface, PLATFORM_HIGHLIGHT, (0, 4, width, 2))
+        pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
         
         # Arrows to indicate movement
         for x in range(10, width - 10, 20):
-            pygame.draw.polygon(surface, PLATFORM_MOVING,
+            pygame.draw.polygon(surface, self.platform_colors['moving'],
                 [(x, 8), (x + 4, 12), (x, 16)])
         
         scaled = pygame.transform.scale(surface,
@@ -306,13 +340,13 @@ class SpriteGenerator:
         surface = pygame.Surface((width, height), pygame.SRCALPHA)
         
         # Yellow grass top
-        pygame.draw.rect(surface, PLATFORM_SMALL, (0, 0, width, 4))
+        pygame.draw.rect(surface, self.platform_colors['small'], (0, 0, width, 4))
         
         # Main body
-        pygame.draw.rect(surface, PLATFORM_BASE, (0, 4, width, height - 4))
+        pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
         
         # Highlight
-        pygame.draw.rect(surface, PLATFORM_HIGHLIGHT, (0, 4, width, 2))
+        pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
         
         scaled = pygame.transform.scale(surface,
             (width * PLATFORM_SCALE, height * PLATFORM_SCALE))
@@ -326,15 +360,15 @@ class SpriteGenerator:
         surface = pygame.Surface((width, height), pygame.SRCALPHA)
         
         # Red grass top
-        pygame.draw.rect(surface, PLATFORM_CRUMBLING, (0, 0, width, 4))
+        pygame.draw.rect(surface, self.platform_colors['crumbling'], (0, 0, width, 4))
         
         # Main body
-        pygame.draw.rect(surface, PLATFORM_BASE, (0, 4, width, height - 4))
+        pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
         
         # Cracks
         for x in range(5, width, 15):
-            pygame.draw.line(surface, PLAYER_OUTLINE, (x, 6), (x + 3, 10), 1)
-            pygame.draw.line(surface, PLAYER_OUTLINE, (x + 3, 10), (x + 1, 14), 1)
+            pygame.draw.line(surface, self.player_colors['outline'], (x, 6), (x + 3, 10), 1)
+            pygame.draw.line(surface, self.player_colors['outline'], (x + 3, 10), (x + 1, 14), 1)
         
         scaled = pygame.transform.scale(surface,
             (width * PLATFORM_SCALE, height * PLATFORM_SCALE))

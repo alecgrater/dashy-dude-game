@@ -34,7 +34,8 @@ class PlatformGenerator:
         platform = self._get_platform_from_pool()
         platform.reset(0, self.last_platform_y, 200, PLATFORM_HEIGHT, PlatformType.STATIC)
         self.platforms.append(platform)
-        self.last_platform_x = 200
+        # Set last_platform_x to the end of the first platform (accounting for scale)
+        self.last_platform_x = 200 * PLATFORM_SCALE
         
         # Generate initial set of platforms
         for _ in range(10):

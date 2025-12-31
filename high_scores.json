@@ -1,0 +1,160 @@
+{
+  "scores": [
+    {
+      "score": 985,
+      "name": "Player",
+      "date": "2025-12-31T16:53:14.970816",
+      "stats": {
+        "total_jumps": 12,
+        "double_jumps": 27,
+        "helicopter_uses": 14,
+        "platforms_landed": 29,
+        "collectibles_gathered": 11,
+        "max_combo": 9,
+        "distance_traveled": 23172,
+        "play_time": 51.99999999999833
+      }
+    },
+    {
+      "score": 865,
+      "name": "Player",
+      "date": "2025-12-31T16:50:46.242208",
+      "stats": {
+        "total_jumps": 14,
+        "double_jumps": 27,
+        "helicopter_uses": 13,
+        "platforms_landed": 20,
+        "collectibles_gathered": 54,
+        "max_combo": 5,
+        "distance_traveled": 18191,
+        "play_time": 40.08333333333234
+      }
+    },
+    {
+      "score": 670,
+      "name": "Player",
+      "date": "2025-12-31T16:51:51.026048",
+      "stats": {
+        "total_jumps": 11,
+        "double_jumps": 19,
+        "helicopter_uses": 9,
+        "platforms_landed": 17,
+        "collectibles_gathered": 20,
+        "max_combo": 6,
+        "distance_traveled": 12947,
+        "play_time": 29.433333333332943
+      }
+    },
+    {
+      "score": 630,
+      "name": "Player",
+      "date": "2025-12-31T17:01:33.534115",
+      "stats": {
+        "total_jumps": 12,
+        "double_jumps": 11,
+        "helicopter_uses": 5,
+        "platforms_landed": 16,
+        "collectibles_gathered": 6,
+        "max_combo": 15,
+        "distance_traveled": 8672,
+        "play_time": 19.75000000000016
+      }
+    },
+    {
+      "score": 490,
+      "name": "Player",
+      "date": "2025-12-31T17:00:26.346062",
+      "stats": {
+        "total_jumps": 7,
+        "double_jumps": 12,
+        "helicopter_uses": 4,
+        "platforms_landed": 9,
+        "collectibles_gathered": 42,
+        "max_combo": 6,
+        "distance_traveled": 9106,
+        "play_time": 21.216666666666743
+      }
+    },
+    {
+      "score": 445,
+      "name": "Player",
+      "date": "2025-12-31T16:39:37.072396",
+      "stats": {
+        "total_jumps": 9,
+        "double_jumps": 15,
+        "helicopter_uses": 6,
+        "platforms_landed": 10,
+        "collectibles_gathered": 18,
+        "max_combo": 4,
+        "distance_traveled": 8597,
+        "play_time": 16.36666666666702
+      }
+    },
+    {
+      "score": 440,
+      "name": "Player",
+      "date": "2025-12-31T16:58:46.820286",
+      "stats": {
+        "total_jumps": 12,
+        "double_jumps": 12,
+        "helicopter_uses": 4,
+        "platforms_landed": 14,
+        "collectibles_gathered": 2,
+        "max_combo": 10,
+        "distance_traveled": 7361,
+        "play_time": 16.116666666667033
+      }
+    },
+    {
+      "score": 395,
+      "name": "Player",
+      "date": "2025-12-31T16:52:22.526512",
+      "stats": {
+        "total_jumps": 11,
+        "double_jumps": 12,
+        "helicopter_uses": 6,
+        "platforms_landed": 14,
+        "collectibles_gathered": 6,
+        "max_combo": 9,
+        "distance_traveled": 10375,
+        "play_time": 23.749999999999932
+      }
+    },
+    {
+      "score": 355,
+      "name": "Player",
+      "date": "2025-12-31T16:39:58.580821",
+      "stats": {
+        "total_jumps": 5,
+        "double_jumps": 12,
+        "helicopter_uses": 8,
+        "platforms_landed": 12,
+        "collectibles_gathered": 8,
+        "max_combo": 8,
+        "distance_traveled": 8037,
+        "play_time": 17.900000000000265
+      }
+    },
+    {
+      "score": 305,
+      "name": "Player",
+      "date": "2025-12-31T16:47:10.555899",
+      "stats": {
+        "total_jumps": 9,
+        "double_jumps": 6,
+        "helicopter_uses": 2,
+        "platforms_landed": 9,
+        "collectibles_gathered": 3,
+        "max_combo": 9,
+        "distance_traveled": 3971,
+        "play_time": 9.266666666666707
+      }
+    }
+  ],
+  "customization": {
+    "player_theme": "blue",
+    "platform_theme": "crystal",
+    "background_theme": "sunset"
+  },
+  "last_updated": "2025-12-31T17:01:33.534161"
+}

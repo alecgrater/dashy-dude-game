@@ -524,6 +524,20 @@ class AudioManager:
             self.music_playing = False
             print("Background music stopped")
     
+    def pause_music(self):
+        """Pause background music."""
+        if self.music_playing:
+            channel = pygame.mixer.Channel(0)
+            channel.pause()
+            print("Background music paused")
+    
+    def resume_music(self):
+        """Resume background music."""
+        if self.music_playing:
+            channel = pygame.mixer.Channel(0)
+            channel.unpause()
+            print("Background music resumed")
+    
     def set_volume(self, volume):
         """
         Set master volume.

@@ -8,6 +8,7 @@ from src.systems.physics import PhysicsEngine
 from src.systems.camera import Camera
 from src.systems.animation import AnimationController
 from src.systems.audio import AudioManager
+from src.systems.save_system import SaveSystem
 from src.world.platform_generator import PlatformGenerator
 from src.world.difficulty_manager import DifficultyManager
 from src.world.collectible_spawner import CollectibleSpawner
@@ -32,9 +33,12 @@ class PlayState(BaseState):
         self.platform_generator = PlatformGenerator()
         self.collectible_spawner = CollectibleSpawner()
         self.difficulty_manager = DifficultyManager()
-        self.background = Background(SCREEN_WIDTH, SCREEN_HEIGHT)
+        # Get background colors from game's customization
+        background_colors = game.customization.get_background_colors()
+        self.background = Background(SCREEN_WIDTH, SCREEN_HEIGHT, background_colors)
         self.audio = AudioManager()
         self.particles = ParticleSystem()
+        self.save_system = game.save_system
         
         # Entities
         self.player = None
@@ -42,6 +46,22 @@ class PlayState(BaseState):
         # Game state
         self.score = 0
         self.game_over = False
+        self.is_new_high_score = False
+        self.paused = False
+        self.resume_button_rect = None
+        self.menu_button_rect = None
+        
+        # Statistics tracking
+        self.stats = {
+            'total_jumps': 0,
+            'double_jumps': 0,
+            'helicopter_uses': 0,
+            'platforms_landed': 0,
+            'collectibles_gathered': 0,
+            'max_combo': 0,
+            'distance_traveled': 0,
+            'play_time': 0.0
+        }
         
         # Power-up states
         self.active_powerups = {}  # {CollectibleType: time_remaining}
@@ -101,6 +121,19 @@ class PlayState(BaseState):
         self.collectible_spawner.clear()
         self.score = 0
         self.game_over = False
+        self.is_new_high_score = False
+        
+        # Reset statistics
+        self.stats = {
+            'total_jumps': 0,
+            'double_jumps': 0,
+            'helicopter_uses': 0,
+            'platforms_landed': 0,
+            'collectibles_gathered': 0,
+            'max_combo': 0,
+            'distance_traveled': 0,
+            'play_time': 0.0
+        }
         
         # Reset power-ups
         self.active_powerups.clear()
@@ -127,8 +160,12 @@ class PlayState(BaseState):
         self.game.ui_renderer.update_score_popups(dt)
         self.game.ui_renderer.update_combo(dt)
         
-        if self.game_over:
+        if self.game_over or self.paused:
             return
+        
+        # Update statistics
+        self.stats['play_time'] += dt
+        self.stats['distance_traveled'] = int(self.camera.position.x)
         
         # Update difficulty
         self.difficulty_manager.update(dt)
@@ -159,6 +196,14 @@ class PlayState(BaseState):
         # Update player and handle sound events
         sound_event = self.player.update(dt, self.game.input_handler, self.physics)
         if sound_event:
+            # Track statistics
+            if sound_event == 'jump':
+                self.stats['total_jumps'] += 1
+            elif sound_event == 'double_jump':
+                self.stats['double_jumps'] += 1
+            elif sound_event == 'helicopter':
+                self.stats['helicopter_uses'] += 1
+            
             # Emit particles based on action
             player_center_x = self.player.position.x + self.player.width / 2
             player_bottom_y = self.player.position.y + self.player.height
@@ -209,29 +254,18 @@ class PlayState(BaseState):
             # Player landed on platform
             self.physics.resolve_platform_collision(self.player, collision_platform)
             
-            # For bouncy/spring platforms, preserve jump abilities
-            if is_bouncy or is_spring:
-                # Store current jump state before landing resets it
-                stored_jump_count = self.player.jump_count
-                
-                sound_event = self.player.land_on_platform(collision_platform)
-                collision_platform.on_player_land()
-                
-                # Restore jump count so player can still use remaining jumps
-                self.player.jump_count = stored_jump_count
-                # Only enable helicopter if player has used at least 2 jumps
-                # This ensures they must double jump before helicoptering
-                self.player.can_helicopter = (stored_jump_count >= 2)
-            else:
-                # Normal landing - reset jump abilities
-                sound_event = self.player.land_on_platform(collision_platform)
-                collision_platform.on_player_land()
+            # Normal landing - reset jump abilities
+            sound_event = self.player.land_on_platform(collision_platform)
+            collision_platform.on_player_land()
             
             # Apply bounce/spring effects AFTER physics resolution
             if is_bouncy:
                 # Bouncy platform - launch player higher
                 self.player.velocity.y = JUMP_VELOCITY * collision_platform.bounce_multiplier
                 self.player.on_ground = False  # Make sure player leaves the platform
+                # Set jump state: bouncy pad counts as first jump
+                self.player.jump_count = 1
+                self.player.can_helicopter = False  # Must double jump first
                 self.audio.play_sound('jump')
                 # Extra particles for bounce
                 self.particles.emit_jump_dust(
@@ -243,7 +277,9 @@ class PlayState(BaseState):
                 # Spring platform - auto-jump with extra force
                 self.player.velocity.y = JUMP_VELOCITY * collision_platform.spring_force
                 self.player.on_ground = False  # Make sure player leaves the platform
-                self.player.jump_count = 1  # Count as one jump used
+                # Set jump state: spring pad counts as first jump
+                self.player.jump_count = 1
+                self.player.can_helicopter = False  # Must double jump first
                 self.audio.play_sound('double_jump')  # Higher pitch sound
                 # Extra particles for spring
                 self.particles.emit_double_jump_boost(
@@ -268,9 +304,16 @@ class PlayState(BaseState):
             if sound_event and collision_platform.platform_type not in [PlatformType.BOUNCY, PlatformType.SPRING]:
                 self.audio.play_sound(sound_event)
             
+            # Track statistics
+            self.stats['platforms_landed'] += 1
+            
             # Update combo
             self.game.ui_renderer.add_combo()
             combo_multiplier = self.game.ui_renderer.get_combo_multiplier()
+            
+            # Track max combo
+            if self.game.ui_renderer.combo_count > self.stats['max_combo']:
+                self.stats['max_combo'] = self.game.ui_renderer.combo_count
             
             # Update score with combo multiplier and double points
             score_gain = int(SCORE_PER_PLATFORM * combo_multiplier)
@@ -330,6 +373,7 @@ class PlayState(BaseState):
         collected = self.collectible_spawner.check_collision(player_rect)
         
         for collectible in collected:
+            self.stats['collectibles_gathered'] += 1
             self._handle_collectible(collectible)
         
         # Check water collision (death)
@@ -341,11 +385,11 @@ class PlayState(BaseState):
                 self.player.position.y = SCREEN_HEIGHT - 400
                 self.player.velocity.y = JUMP_VELOCITY  # Give them a jump
                 
-                # Set jump state so player can still double jump and helicopter
+                # Set jump state: shield rescue counts as first jump
                 self.player.on_ground = False
                 self.player.current_platform = None
                 self.player.jump_count = 1  # Count as first jump used, can still double jump
-                self.player.can_helicopter = False  # Will be enabled after double jump
+                self.player.can_helicopter = False  # Must double jump first
                 
                 # Visual feedback
                 self.game.ui_renderer.add_score_popup(
@@ -392,6 +436,9 @@ class PlayState(BaseState):
                 # Reset combo on death
                 self.game.ui_renderer.combo_count = 0
                 self.game.ui_renderer.combo_timer = 0.0
+                
+                # Check and save high score
+                self._handle_game_over()
                 
                 print(f"Game Over! Final Score: {self.score}")
         
@@ -498,6 +545,18 @@ class PlayState(BaseState):
             # Emit particles
             self.particles.emit_double_jump_boost(collectible.position.x, collectible.position.y)
     
+    def _handle_game_over(self):
+        """Handle game over - check for high score and save."""
+        # Check if this is a new high score
+        self.is_new_high_score = self.save_system.is_high_score(self.score)
+        
+        # Save the score
+        if self.is_new_high_score:
+            self.save_system.add_score(self.score, stats=self.stats)
+            rank = self.save_system.get_rank(self.score)
+            if rank:
+                print(f"New High Score! Rank #{rank}")
+    
     def _render_shield_effect(self, screen):
         """Render shield visual effect around player."""
         # Get player screen position
@@ -593,7 +652,8 @@ class PlayState(BaseState):
         self.game.ui_renderer.render_score_popups(screen, self.camera.position.x, self.camera.position.y)
         
         # Render UI
-        self.game.ui_renderer.render_score(screen, self.score)
+        high_score = self.save_system.get_high_score()
+        self.game.ui_renderer.render_score(screen, self.score, high_score)
         self.game.ui_renderer.render_combo(screen)
         
         # Render active power-ups
@@ -601,19 +661,108 @@ class PlayState(BaseState):
         
         # Game over message
         if self.game_over:
-            self.game.ui_renderer.render_title(screen, "GAME OVER")
-            self.game.ui_renderer.render_text(screen,
+            if self.is_new_high_score:
+                self.game.ui_renderer.render_title(screen, "NEW HIGH SCORE!")
+            else:
+                self.game.ui_renderer.render_title(screen, "GAME OVER")
+            
+            # Show final score
+            self.game.ui_renderer.render_centered_text(
+                screen,
+                f"Final Score: {self.score}",
+                SCREEN_HEIGHT // 2 + 20,
+                "medium"
+            )
+            
+            # Show rank if high score
+            if self.is_new_high_score:
+                rank = self.save_system.get_rank(self.score)
+                if rank:
+                    self.game.ui_renderer.render_centered_text(
+                        screen,
+                        f"Rank: #{rank}",
+                        SCREEN_HEIGHT // 2 + 60,
+                        "small",
+                        UI_ACCENT
+                    )
+            
+            self.game.ui_renderer.render_centered_text(
+                screen,
                 "Press SPACE to restart",
-                SCREEN_WIDTH // 2 - 150,
-                SCREEN_HEIGHT // 2 + 50,
-                "small")
+                SCREEN_HEIGHT // 2 + 100,
+                "small"
+            )
+        
+        # Pause menu
+        if self.paused:
+            # Semi-transparent overlay
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            overlay.fill((0, 0, 0))
+            overlay.set_alpha(180)
+            screen.blit(overlay, (0, 0))
+            
+            # Pause title
+            self.game.ui_renderer.render_title(screen, "PAUSED")
+            
+            # Get mouse position for hover detection
+            mouse_pos = pygame.mouse.get_pos()
+            
+            # Resume button
+            button_width = 200
+            button_height = 50
+            resume_x = SCREEN_WIDTH // 2 - button_width // 2
+            resume_y = SCREEN_HEIGHT // 2 + 20
+            self.resume_button_rect = pygame.Rect(resume_x, resume_y, button_width, button_height)
+            is_resume_hovered = self.resume_button_rect.collidepoint(mouse_pos)
+            
+            self.game.ui_renderer.render_button(
+                screen, "RESUME",
+                resume_x, resume_y, button_width, button_height,
+                is_resume_hovered
+            )
+            
+            # Main Menu button
+            menu_x = SCREEN_WIDTH // 2 - button_width // 2
+            menu_y = SCREEN_HEIGHT // 2 + 90
+            self.menu_button_rect = pygame.Rect(menu_x, menu_y, button_width, button_height)
+            is_menu_hovered = self.menu_button_rect.collidepoint(mouse_pos)
+            
+            self.game.ui_renderer.render_button(
+                screen, "MAIN MENU",
+                menu_x, menu_y, button_width, button_height,
+                is_menu_hovered
+            )
         
         # Render fade overlay
         self.game.ui_renderer.render_fade(screen)
     
     def handle_event(self, event):
         """Handle events."""
-        if self.game_over and event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                # Restart game
-                self.enter()
+        if event.type == pygame.KEYDOWN:
+            # Handle pause
+            if event.key == pygame.K_ESCAPE and not self.game_over:
+                self.paused = not self.paused
+                if self.paused:
+                    # Pause music
+                    self.audio.pause_music()
+                else:
+                    # Resume music
+                    self.audio.resume_music()
+            
+            # Handle game over
+            if self.game_over:
+                if event.key == pygame.K_SPACE:
+                    # Restart game
+                    self.enter()
+        
+        # Handle pause menu button clicks
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.paused:
+                if self.resume_button_rect and self.resume_button_rect.collidepoint(event.pos):
+                    # Resume game
+                    self.paused = False
+                    self.audio.resume_music()
+                elif self.menu_button_rect and self.menu_button_rect.collidepoint(event.pos):
+                    # Return to main menu
+                    self.paused = False
+                    self.game.change_state('title')

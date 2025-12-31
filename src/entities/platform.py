@@ -49,7 +49,7 @@ class Platform:
         self.player_landed = False
         
         # Bouncy platform
-        self.bounce_multiplier = 1.3  # Launch player higher (reduced from 1.5 to prevent overshooting)
+        self.bounce_multiplier = 1.7  # Launch player higher (reduced from 1.5 to prevent overshooting)
         
         # Ice platform
         self.ice_friction = 0.3  # Reduced friction (0-1, lower = more slippery)
@@ -66,7 +66,7 @@ class Platform:
         self.disappear_cycle_time = 0.0
         
         # Spring platform
-        self.spring_force = 2.0  # Auto-jump multiplier
+        self.spring_force = 2.5  # Auto-jump multiplier
         self.spring_compressed = False
         self.spring_compression = 0.0  # 0-1 for animation
         

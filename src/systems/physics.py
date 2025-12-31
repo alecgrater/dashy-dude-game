@@ -67,15 +67,19 @@ class PhysicsEngine:
             
             platform_rect = platform.get_rect()
             
-            # Check if player's bottom is near platform top
-            # Allow some tolerance for smooth landing
-            tolerance = 10
+            # Check horizontal overlap first (more efficient)
+            if not (player_rect.right > platform_rect.left and
+                    player_rect.left < platform_rect.right):
+                continue
             
-            if (player_rect.bottom >= platform_rect.top and
-                player_rect.bottom <= platform_rect.top + tolerance and
-                player_rect.right > platform_rect.left and
-                player_rect.left < platform_rect.right):
-                
+            # Calculate where player was last frame (approximately)
+            # This helps catch fast-moving collisions
+            prev_bottom = player_rect.bottom - player.velocity.y * FIXED_DT
+            
+            # Check if player crossed through the platform this frame
+            # Player was above platform top last frame, and is now at or below it
+            if (prev_bottom <= platform_rect.top and
+                player_rect.bottom >= platform_rect.top):
                 return platform
         
         return None

@@ -5,6 +5,8 @@ import pygame
 import time
 from src.utils.constants import *
 from src.systems.input import InputHandler
+from src.systems.customization import CustomizationSystem
+from src.systems.save_system import SaveSystem
 from src.graphics.sprite_generator import SpriteGenerator
 from src.graphics.ui import UIRenderer
 from src.states.title_state import TitleState
@@ -34,10 +36,27 @@ class Game:
         # Input handler
         self.input_handler = InputHandler()
         
-        # Generate sprites
+        # Initialize save system and customization
+        print("Loading save data...")
+        self.save_system = SaveSystem()
+        self.customization = CustomizationSystem()
+        
+        # Load saved customization preferences
+        saved_customization = self.save_system.get_customization()
+        if saved_customization:
+            self.customization.from_dict(saved_customization)
+        
+        # Set high score for unlock checking
+        self.customization.set_high_score(self.save_system.get_high_score())
+        
+        # Get colors from customization
+        player_colors = self.customization.get_player_colors()
+        platform_colors = self.customization.get_platform_colors()
+        
+        # Generate sprites with custom colors
         print("Generating sprites...")
-        sprite_gen = SpriteGenerator()
-        self.sprites = sprite_gen.generate_all_sprites()
+        self.sprite_generator = SpriteGenerator(player_colors, platform_colors)
+        self.sprites = self.sprite_generator.generate_all_sprites()
         print("Sprites generated!")
         
         # UI renderer
@@ -100,9 +119,6 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.running = False
             
             # Pass event to current state
             if self.current_state:
