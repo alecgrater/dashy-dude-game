@@ -109,28 +109,31 @@ class PlatformGenerator:
             # Gap is beyond double jump, needs helicopter glide
             gap = random.uniform(double_jump_distance * 0.85, max_gap)
         
-        # Choose platform type based on difficulty
-        platform_type = self._choose_platform_type()
+        # Height variation - create dramatic vertical gameplay
+        # Calculate max vertical reach with single jump + helicopter
+        # Using physics: max_height = v²/(2g) where v is jump velocity
+        max_jump_height = (JUMP_VELOCITY * JUMP_VELOCITY) / (2 * GRAVITY)
+        
+        # Create much more dramatic height variation
+        # Positive height_diff = platform is lower (easier)
+        # Negative height_diff = platform is higher (harder)
+        # Increased range from 0.3/0.5 to 0.8/1.2 for more variety
+        height_diff = random.uniform(-max_jump_height * 0.8, max_jump_height * 1.2)
+        y = self.last_platform_y + height_diff
+        
+        # Clamp Y position to keep platforms on screen and above water
+        # Expanded range: 100 (higher up) to WATER_LEVEL - 100 (lower down)
+        y = max(100, min(WATER_LEVEL - 100, y))
+        
+        # Choose platform type based on difficulty AND height
+        # Pass the Y position to influence platform type selection
+        platform_type = self._choose_platform_type(y)
         
         # Determine platform width
         if platform_type == PlatformType.SMALL:
             width = SMALL_PLATFORM_WIDTH
         else:
             width = random.randint(MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH)
-        
-        # Height variation - keep platforms within reachable vertical range
-        # Calculate max vertical reach with single jump + helicopter
-        # Using physics: max_height = v²/(2g) where v is jump velocity
-        max_jump_height = (JUMP_VELOCITY * JUMP_VELOCITY) / (2 * GRAVITY)
-        
-        # Allow platforms to be slightly higher or lower, but stay reachable
-        # Positive height_diff = platform is lower (easier)
-        # Negative height_diff = platform is higher (harder)
-        height_diff = random.uniform(-max_jump_height * 0.3, max_jump_height * 0.5)
-        y = self.last_platform_y + height_diff
-        
-        # Clamp Y position to keep platforms on screen and above water
-        y = max(150, min(WATER_LEVEL - 150, y))
         
         # Create platform
         x = self.last_platform_x + gap
@@ -141,43 +144,80 @@ class PlatformGenerator:
         self.last_platform_x = x + (width * PLATFORM_SCALE)
         self.last_platform_y = y
     
-    def _choose_platform_type(self):
+    def _choose_platform_type(self, y_position):
         """
-        Select platform type based on score.
+        Select platform type based on score and height.
+        Lower platforms have higher chance of being bouncy/spring to help recovery.
+        
+        Args:
+            y_position: Y coordinate of the platform
         
         Returns:
             PlatformType enum value
         """
-        # Early game (score < 200): only static, moving, and small platforms
+        # Calculate how low the platform is (0.0 = top, 1.0 = bottom)
+        # Lower platforms (closer to water) get more bouncy platforms
+        height_ratio = (y_position - 100) / (WATER_LEVEL - 200)
+        height_ratio = max(0.0, min(1.0, height_ratio))
+        
+        # Early game (score < 200): only static, moving, small, and bouncy platforms
         if self.score < 200:
             roll = random.random()
-            if roll < 0.70:
+            
+            # Increase bouncy platform chance at lower heights
+            bouncy_threshold = 0.70 + (height_ratio * 0.15)  # 70-85% based on height
+            
+            if roll < bouncy_threshold:
                 return PlatformType.STATIC
             elif roll < 0.90:
                 return PlatformType.MOVING
-            else:
+            elif roll < 0.95:
                 return PlatformType.SMALL
+            else:
+                # More bouncy platforms at lower heights
+                return PlatformType.BOUNCY
         
         # Score 200+: introduce all special platform types
         roll = random.random()
         
-        if roll < 0.40:
+        # Dramatically increase bouncy/spring platform chance at lower heights
+        # At bottom (height_ratio = 1.0): 50% chance of bouncy/spring
+        # At top (height_ratio = 0.0): normal distribution
+        bouncy_boost = height_ratio * 0.35  # Up to 35% boost for bouncy platforms
+        
+        # Adjust thresholds based on height
+        static_threshold = 0.40 - bouncy_boost
+        moving_threshold = static_threshold + 0.12
+        small_threshold = moving_threshold + 0.10
+        bouncy_threshold = small_threshold + 0.08 + (bouncy_boost * 0.5)
+        spring_threshold = bouncy_threshold + 0.05 + (bouncy_boost * 0.5)
+        ice_threshold = spring_threshold + 0.07
+        conveyor_threshold = ice_threshold + 0.07
+        crumbling_threshold = conveyor_threshold + 0.06
+        disappearing_threshold = crumbling_threshold + 0.05
+        
+        if roll < static_threshold:
             return PlatformType.STATIC
-        elif roll < 0.52:
+        elif roll < moving_threshold:
             return PlatformType.MOVING
-        elif roll < 0.62:
+        elif roll < small_threshold:
             return PlatformType.SMALL
-        elif roll < 0.70:
+        elif roll < bouncy_threshold:
             return PlatformType.BOUNCY
-        elif roll < 0.77:
+        elif roll < spring_threshold:
+            return PlatformType.SPRING
+        elif roll < ice_threshold:
             return PlatformType.ICE
-        elif roll < 0.84:
+        elif roll < conveyor_threshold:
             return PlatformType.CONVEYOR
-        elif roll < 0.90:
+        elif roll < crumbling_threshold:
             return PlatformType.CRUMBLING
-        elif roll < 0.95:
+        elif roll < disappearing_threshold:
             return PlatformType.DISAPPEARING
         else:
+            # Default to bouncy at very low heights
+            if height_ratio > 0.7:
+                return PlatformType.BOUNCY
             return PlatformType.SPRING
     
     def _get_platform_from_pool(self):

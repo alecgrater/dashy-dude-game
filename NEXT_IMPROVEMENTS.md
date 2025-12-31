@@ -188,18 +188,29 @@ This document contains a prioritized list of improvements and features to enhanc
 
 ## 🔧 Low Priority / Polish
 
-### 9\. Advanced Camera Effects
+### 9\. ✅ Advanced Camera Effects
 
+**Status:** ✅ **COMPLETED** (Dec 31, 2025)
 **Description:** Enhance camera system:
 
-*   Dynamic zoom based on speed
-*   Camera anticipation (look ahead in jump direction)
-*   Smooth camera transitions between states
-*   Camera shake intensity based on fall distance
+*   ✅ Dynamic zoom based on speed (zooms out when moving fast, in when slow)
+*   ✅ Camera anticipation (look ahead in jump direction based on velocity)
+*   ✅ Smooth camera transitions between states (different smoothing per player state)
+*   ✅ Camera shake intensity based on fall distance (more intense shake for longer falls)
 
-**Files to modify:**
+**Implementation notes:**
+*   Dynamic zoom interpolates between 0.95x (zoomed out) and 1.05x (zoomed in) based on player speed
+*   Camera anticipation looks ahead up to 150 pixels in movement direction
+*   Vertical anticipation looks up during jumps and down during falls
+*   State-based smoothing: slower for death/helicopter, faster for jumps
+*   Fall distance tracking automatically scales shake intensity up to 20 pixels max
+*   All effects use smooth interpolation for natural camera movement
 
-*   `src/systems/camera.py`
+**Files modified:**
+
+*   `src/systems/camera.py` - added dynamic zoom, anticipation, state smoothing, and fall distance shake
+*   `src/utils/constants.py` - added camera effect constants
+*   `src/states/play_state.py` - integrated fall distance shake on landing and death
 
 ---
 
