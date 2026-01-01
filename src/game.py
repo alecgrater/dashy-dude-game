@@ -7,6 +7,7 @@ from src.utils.constants import *
 from src.systems.input import InputHandler
 from src.systems.customization import CustomizationSystem
 from src.systems.save_system import SaveSystem
+from src.systems.achievements import AchievementSystem
 from src.graphics.sprite_generator import SpriteGenerator
 from src.graphics.ui import UIRenderer
 from src.states.title_state import TitleState
@@ -36,9 +37,10 @@ class Game:
         # Input handler
         self.input_handler = InputHandler()
         
-        # Initialize save system and customization
+        # Initialize save system, achievements, and customization
         print("Loading save data...")
         self.save_system = SaveSystem()
+        self.achievement_system = AchievementSystem()
         self.customization = CustomizationSystem()
         
         # Load saved customization preferences
@@ -133,6 +135,41 @@ class Game:
         """
         if self.current_state:
             self.current_state.update(dt)
+    
+    def change_state(self, state_name):
+        """
+        Change to a different game state.
+        
+        Args:
+            state_name: Name of the state to change to ('title', 'play', 'customize', 'achievements')
+        """
+        # Exit current state
+        if self.current_state:
+            self.current_state.exit()
+        
+        # Change to new state
+        if state_name == 'title':
+            if not hasattr(self, 'title_state'):
+                self.title_state = TitleState(self)
+            self.current_state = self.title_state
+        elif state_name == 'play':
+            from src.states.play_state import PlayState
+            self.play_state = PlayState(self)
+            self.current_state = self.play_state
+        elif state_name == 'customize':
+            from src.states.customization_state import CustomizationState
+            if not hasattr(self, 'customization_state'):
+                self.customization_state = CustomizationState(self)
+            self.current_state = self.customization_state
+        elif state_name == 'achievements':
+            from src.states.achievements_state import AchievementsState
+            if not hasattr(self, 'achievements_state'):
+                self.achievements_state = AchievementsState(self)
+            self.current_state = self.achievements_state
+        
+        # Enter new state
+        if self.current_state:
+            self.current_state.enter()
     
     def render(self):
         """Render game visuals."""

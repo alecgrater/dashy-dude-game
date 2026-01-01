@@ -31,6 +31,21 @@
       }
     },
     {
+      "score": 870,
+      "name": "Player",
+      "date": "2026-01-01T09:10:58.024644",
+      "stats": {
+        "total_jumps": 9,
+        "double_jumps": 23,
+        "helicopter_uses": 7,
+        "platforms_landed": 15,
+        "collectibles_gathered": 65,
+        "max_combo": 6,
+        "distance_traveled": 14989,
+        "play_time": 32.38333333333278
+      }
+    },
+    {
       "score": 865,
       "name": "Player",
       "date": "2025-12-31T16:50:46.242208",
@@ -134,27 +149,12 @@
         "distance_traveled": 6738,
         "play_time": 15.016666666666993
       }
-    },
-    {
-      "score": 490,
-      "name": "Player",
-      "date": "2025-12-31T17:00:26.346062",
-      "stats": {
-        "total_jumps": 7,
-        "double_jumps": 12,
-        "helicopter_uses": 4,
-        "platforms_landed": 9,
-        "collectibles_gathered": 42,
-        "max_combo": 6,
-        "distance_traveled": 9106,
-        "play_time": 21.216666666666743
-      }
     }
   ],
   "customization": {
-    "player_theme": "green",
-    "platform_theme": "crystal",
-    "background_theme": "space"
+    "player_theme": "rainbow",
+    "platform_theme": "grass",
+    "background_theme": "ocean"
   },
-  "last_updated": "2026-01-01T04:55:56.487257"
+  "last_updated": "2026-01-01T09:38:13.670438"
 }

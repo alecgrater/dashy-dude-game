@@ -1,0 +1,85 @@
+{
+  "achievements": [
+    {
+      "type": "first_jump",
+      "name": "First Jump",
+      "description": "Complete your first jump",
+      "unlocked": true,
+      "unlock_date": "2026-01-01T09:38:15.354485",
+      "progress": 0
+    },
+    {
+      "type": "double_trouble",
+      "name": "Double Trouble",
+      "description": "Use double jump 100 times",
+      "unlocked": false,
+      "unlock_date": null,
+      "progress": 0
+    },
+    {
+      "type": "helicopter_hero",
+      "name": "Helicopter Hero",
+      "description": "Use helicopter 50 times",
+      "unlocked": false,
+      "unlock_date": null,
+      "progress": 0
+    },
+    {
+      "type": "marathon_runner",
+      "name": "Marathon Runner",
+      "description": "Survive for 5 minutes in a single run",
+      "unlocked": false,
+      "unlock_date": null,
+      "progress": 0
+    },
+    {
+      "type": "perfect_landing",
+      "name": "Perfect Landing",
+      "description": "Achieve a 10x combo",
+      "unlocked": true,
+      "unlock_date": "2026-01-01T09:38:41.501987",
+      "progress": 0
+    },
+    {
+      "type": "speed_demon",
+      "name": "Speed Demon",
+      "description": "Reach maximum difficulty level",
+      "unlocked": true,
+      "unlock_date": "2026-01-01T09:38:14.727006",
+      "progress": 0
+    },
+    {
+      "type": "coin_collector",
+      "name": "Coin Collector",
+      "description": "Collect 100 collectibles",
+      "unlocked": false,
+      "unlock_date": null,
+      "progress": 0
+    },
+    {
+      "type": "combo_master",
+      "name": "Combo Master",
+      "description": "Achieve a 20x combo",
+      "unlocked": false,
+      "unlock_date": null,
+      "progress": 0
+    },
+    {
+      "type": "high_flyer",
+      "name": "High Flyer",
+      "description": "Land on 100 platforms in a single run",
+      "unlocked": false,
+      "unlock_date": null,
+      "progress": 0
+    },
+    {
+      "type": "platform_master",
+      "name": "Platform Master",
+      "description": "Land on 500 platforms total",
+      "unlocked": false,
+      "unlock_date": null,
+      "progress": 0
+    }
+  ],
+  "last_updated": "2026-01-01T09:38:41.502052"
+}

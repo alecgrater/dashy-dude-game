@@ -9,6 +9,7 @@ from src.systems.camera import Camera
 from src.systems.animation import AnimationController
 from src.systems.audio import AudioManager
 from src.systems.save_system import SaveSystem
+from src.systems.achievements import AchievementSystem
 from src.world.platform_generator import PlatformGenerator
 from src.world.difficulty_manager import DifficultyManager
 from src.world.collectible_spawner import CollectibleSpawner
@@ -39,6 +40,7 @@ class PlayState(BaseState):
         self.audio = AudioManager()
         self.particles = ParticleSystem()
         self.save_system = game.save_system
+        self.achievement_system = game.achievement_system
         
         # Entities
         self.player = None
@@ -60,8 +62,15 @@ class PlayState(BaseState):
             'collectibles_gathered': 0,
             'max_combo': 0,
             'distance_traveled': 0,
-            'play_time': 0.0
+            'play_time': 0.0,
+            'max_difficulty_reached': 0.0,
+            'total_platforms_landed': 0  # Cumulative across all runs
         }
+        
+        # Achievement notification queue
+        self.achievement_notifications = []
+        self.notification_timer = 0.0
+        self.notification_duration = 4.0  # Show each notification for 4 seconds
         
         # Power-up states
         self.active_powerups = {}  # {CollectibleType: time_remaining}
@@ -123,6 +132,9 @@ class PlayState(BaseState):
         self.game_over = False
         self.is_new_high_score = False
         
+        # Load cumulative stats from previous runs
+        previous_total_platforms = self.stats.get('total_platforms_landed', 0)
+        
         # Reset statistics
         self.stats = {
             'total_jumps': 0,
@@ -132,8 +144,14 @@ class PlayState(BaseState):
             'collectibles_gathered': 0,
             'max_combo': 0,
             'distance_traveled': 0,
-            'play_time': 0.0
+            'play_time': 0.0,
+            'max_difficulty_reached': 0.0,
+            'total_platforms_landed': previous_total_platforms  # Preserve cumulative stat
         }
+        
+        # Clear achievement notifications
+        self.achievement_notifications.clear()
+        self.notification_timer = 0.0
         
         # Reset power-ups
         self.active_powerups.clear()
@@ -169,6 +187,25 @@ class PlayState(BaseState):
         
         # Update difficulty
         self.difficulty_manager.update(dt)
+        current_difficulty = self.difficulty_manager.get_difficulty_level()
+        if current_difficulty > self.stats['max_difficulty_reached']:
+            self.stats['max_difficulty_reached'] = current_difficulty
+        
+        # Update achievements
+        self.achievement_system.update(self.stats)
+        
+        # Check for newly unlocked achievements
+        newly_unlocked = self.achievement_system.get_newly_unlocked()
+        if newly_unlocked:
+            self.achievement_notifications.extend(newly_unlocked)
+            self.achievement_system.clear_newly_unlocked()
+        
+        # Update achievement notification timer
+        if self.achievement_notifications:
+            self.notification_timer += dt
+            if self.notification_timer >= self.notification_duration:
+                self.achievement_notifications.pop(0)
+                self.notification_timer = 0.0
         
         # Update background
         self.background.update(dt)
@@ -306,6 +343,7 @@ class PlayState(BaseState):
             
             # Track statistics
             self.stats['platforms_landed'] += 1
+            self.stats['total_platforms_landed'] += 1
             
             # Update combo
             self.game.ui_renderer.add_combo()
@@ -611,6 +649,82 @@ class PlayState(BaseState):
             screen.blit(text, (x_pos, y_offset))
             y_offset += 30
     
+    def _render_achievement_notification(self, screen):
+        """Render achievement unlock notification."""
+        if not self.achievement_notifications:
+            return
+        
+        # Get the current achievement to display
+        achievement = self.achievement_notifications[0]
+        
+        # Calculate animation progress (fade in/out)
+        fade_duration = 0.5
+        if self.notification_timer < fade_duration:
+            # Fade in
+            alpha = int((self.notification_timer / fade_duration) * 255)
+        elif self.notification_timer > self.notification_duration - fade_duration:
+            # Fade out
+            time_left = self.notification_duration - self.notification_timer
+            alpha = int((time_left / fade_duration) * 255)
+        else:
+            # Fully visible
+            alpha = 255
+        
+        # Create notification box
+        box_width = 400
+        box_height = 100
+        box_x = SCREEN_WIDTH - box_width - 20
+        box_y = 150
+        
+        # Create surface with alpha
+        notification_surface = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+        
+        # Draw background with border
+        bg_color = (40, 40, 60, min(alpha, 220))
+        border_color = (*achievement.icon_color, alpha)
+        pygame.draw.rect(notification_surface, bg_color, (0, 0, box_width, box_height), border_radius=10)
+        pygame.draw.rect(notification_surface, border_color, (0, 0, box_width, box_height), 3, border_radius=10)
+        
+        # Draw achievement icon (star)
+        icon_size = 50
+        icon_x = 25
+        icon_y = box_height // 2
+        icon_color = (*achievement.icon_color, alpha)
+        
+        # Draw star shape
+        import math
+        star_points = []
+        for i in range(10):
+            angle = (i * 36 - 90) * math.pi / 180
+            if i % 2 == 0:
+                radius = icon_size // 2
+            else:
+                radius = icon_size // 4
+            x = icon_x + int(radius * math.cos(angle))
+            y = icon_y + int(radius * math.sin(angle))
+            star_points.append((x, y))
+        
+        pygame.draw.polygon(notification_surface, icon_color, star_points)
+        
+        # Draw text
+        title_font = pygame.font.Font(None, 32)
+        desc_font = pygame.font.Font(None, 20)
+        
+        # "Achievement Unlocked!" text
+        unlock_text = title_font.render("Achievement Unlocked!", True, (255, 255, 255, alpha))
+        notification_surface.blit(unlock_text, (icon_x + icon_size + 10, 15))
+        
+        # Achievement name
+        name_text = desc_font.render(achievement.name, True, achievement.icon_color + (alpha,))
+        notification_surface.blit(name_text, (icon_x + icon_size + 10, 45))
+        
+        # Achievement description
+        desc_text = desc_font.render(achievement.description, True, (200, 200, 200, alpha))
+        notification_surface.blit(desc_text, (icon_x + icon_size + 10, 68))
+        
+        # Blit to screen
+        screen.blit(notification_surface, (box_x, box_y))
+    
     def render(self, screen):
         """Render game visuals."""
         # Render background
@@ -658,6 +772,9 @@ class PlayState(BaseState):
         
         # Render active power-ups
         self._render_powerup_indicators(screen)
+        
+        # Render achievement notifications
+        self._render_achievement_notification(screen)
         
         # Game over message
         if self.game_over:
