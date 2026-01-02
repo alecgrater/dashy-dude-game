@@ -14,10 +14,11 @@ Features:
 - Modern pixel art graphics
 - Coyote time and jump buffering for responsive controls
 """
+import asyncio
 from src.game import Game
 
 
-def main():
+async def main():
     """Main entry point."""
     print("=" * 50)
     print("DASHY DUDE")
@@ -32,11 +33,11 @@ def main():
     print()
     
     game = Game()
-    game.run()
+    await game.run()
     
     print()
     print("Thanks for playing!")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

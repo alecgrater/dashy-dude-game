@@ -1,6 +1,7 @@
 """
 Main game class with game loop and state management.
 """
+import asyncio
 import pygame
 import time
 from src.utils.constants import *
@@ -85,7 +86,7 @@ class Game:
         self.current_state = self.title_state
         self.current_state.enter()
     
-    def run(self):
+    async def run(self):
         """
         Main game loop with fixed timestep.
         """
@@ -133,6 +134,9 @@ class Game:
                 self.frame_times.append(frame_time)
                 if len(self.frame_times) > self.max_frame_samples:
                     self.frame_times.pop(0)
+            
+            # Yield control to browser (required for Pygbag/WebAssembly)
+            await asyncio.sleep(0)
         
         # Cleanup
         pygame.quit()
