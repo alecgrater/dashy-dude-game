@@ -2,9 +2,13 @@
 Audio system with procedural sound generation.
 Uses pygame.mixer for audio playback and numpy for sound synthesis.
 """
+import sys
 import pygame
 import numpy as np
 from src.utils.constants import *
+
+# Check if running in web environment (Pygbag/Emscripten)
+IS_WEB = sys.platform == 'emscripten'
 
 
 class AudioManager:
@@ -826,12 +830,52 @@ class AudioManager:
             pitched_sound.set_volume(0.4)  # Play at 40% volume
             pitched_sound.play()
     
+    def _generate_simple_music(self):
+        """
+        Generate simple background music for web (much faster than full version).
+        Just a simple looping beat with basic melody.
+        """
+        duration = 4.0  # Short 4 second loop
+        sample_count = int(AUDIO_SAMPLE_RATE * duration)
+        t = np.linspace(0, duration, sample_count, False)
+        
+        # Simple bass line
+        bass_freq = 110  # A2
+        bass = 0.3 * np.sin(2 * np.pi * bass_freq * t)
+        
+        # Simple melody (just a few notes)
+        melody = np.zeros(sample_count)
+        notes = [(220, 0, 0.5), (330, 0.5, 0.5), (440, 1.0, 0.5), (330, 1.5, 0.5),
+                 (220, 2.0, 0.5), (330, 2.5, 0.5), (440, 3.0, 0.5), (550, 3.5, 0.5)]
+        
+        for freq, start, dur in notes:
+            start_idx = int(start * AUDIO_SAMPLE_RATE)
+            end_idx = int((start + dur) * AUDIO_SAMPLE_RATE)
+            if end_idx > sample_count:
+                end_idx = sample_count
+            note_t = np.linspace(0, dur, end_idx - start_idx, False)
+            note = 0.2 * np.sin(2 * np.pi * freq * note_t)
+            # Simple envelope
+            env = np.exp(-note_t * 3)
+            melody[start_idx:end_idx] += note * env
+        
+        # Combine
+        music = bass + melody
+        
+        # Normalize
+        music = music / np.max(np.abs(music)) * 0.15
+        
+        return music
+    
     def play_music(self):
         """Start playing background music loop."""
         if not self.music_playing:
             try:
-                # Use procedural music (more reliable on web)
-                music_data = self._generate_background_music()
+                # Use simple music on web to avoid blocking
+                if IS_WEB:
+                    music_data = self._generate_simple_music()
+                else:
+                    music_data = self._generate_background_music()
                 
                 # Convert to 16-bit stereo
                 music_data = np.clip(music_data * 32767, -32768, 32767).astype(np.int16)
