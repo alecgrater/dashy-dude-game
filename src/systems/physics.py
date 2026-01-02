@@ -1,6 +1,7 @@
 """
 Physics engine for gravity, velocity, and collision detection.
 """
+import pygame
 from src.utils.constants import *
 from src.utils.math_utils import rect_collision
 
@@ -143,5 +144,4 @@ class PhysicsEngine:
         Returns:
             pygame.Rect object
         """
-        import pygame
         return pygame.Rect(x, y, width, height)

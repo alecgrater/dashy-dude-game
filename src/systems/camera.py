@@ -5,6 +5,7 @@ import random
 import math
 from src.utils.constants import *
 from src.utils.math_utils import Vector2, lerp
+from src.entities.player import PlayerState
 
 
 class Camera:
@@ -165,8 +166,6 @@ class Camera:
         Returns:
             Smoothing factor (0-1)
         """
-        from src.entities.player import PlayerState
-        
         # Use different smoothing for different states
         if player.state == PlayerState.DEAD:
             return 0.05  # Very smooth when dead

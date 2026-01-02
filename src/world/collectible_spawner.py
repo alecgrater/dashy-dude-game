@@ -4,6 +4,7 @@ Collectible spawning system.
 import random
 from src.entities.collectible import Collectible, CollectibleType
 from src.utils.math_utils import Vector2
+from src.utils.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 
 
 class CollectibleSpawner:
@@ -229,7 +230,6 @@ class CollectibleSpawner:
             camera: Camera instance
         """
         # Calculate visible area with padding
-        from src.utils.constants import SCREEN_WIDTH, SCREEN_HEIGHT
         cull_padding = 100  # Smaller padding for collectibles
         visible_left = camera.position.x - cull_padding
         visible_right = camera.position.x + SCREEN_WIDTH + cull_padding

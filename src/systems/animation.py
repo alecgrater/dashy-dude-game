@@ -3,6 +3,7 @@ Animation system for sprite frame management.
 """
 from enum import Enum
 from src.utils.constants import *
+from src.entities.player import PlayerState
 
 
 class AnimationState(Enum):
@@ -112,8 +113,6 @@ class AnimationController:
         Returns:
             AnimationState enum value
         """
-        from src.entities.player import PlayerState
-        
         mapping = {
             PlayerState.IDLE: AnimationState.IDLE,
             PlayerState.RUNNING: AnimationState.RUNNING,

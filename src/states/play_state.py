@@ -2,14 +2,15 @@
 Main gameplay state.
 """
 import pygame
+import math
 from src.states.base_state import BaseState
 from src.entities.player import Player
+from src.entities.platform import PlatformType
+from src.entities.collectible import CollectibleType
 from src.systems.physics import PhysicsEngine
 from src.systems.camera import Camera
 from src.systems.animation import AnimationController
 from src.systems.audio import AudioManager
-from src.systems.save_system import SaveSystem
-from src.systems.achievements import AchievementSystem
 from src.world.platform_generator import PlatformGenerator
 from src.world.difficulty_manager import DifficultyManager
 from src.world.collectible_spawner import CollectibleSpawner
@@ -17,7 +18,6 @@ from src.graphics.background import Background
 from src.graphics.particles import ParticleSystem
 from src.utils.constants import *
 from src.utils.math_utils import Vector2
-from src.entities.collectible import CollectibleType
 
 
 class PlayState(BaseState):
@@ -287,7 +287,6 @@ class PlayState(BaseState):
             self.audio.stop_sound('helicopter')
         
         # Check platform collision (filter out invisible disappearing platforms)
-        from src.entities.platform import PlatformType
         platforms = self.platform_generator.get_platforms()
         visible_platforms = [p for p in platforms
                            if p.platform_type != PlatformType.DISAPPEARING or p.is_visible]
@@ -297,8 +296,6 @@ class PlayState(BaseState):
         
         if collision_platform and not self.player.on_ground:
             # Handle special platform effects BEFORE physics resolution
-            from src.entities.platform import PlatformType
-            
             # Store if this is a bouncy/spring platform
             is_bouncy = collision_platform.platform_type == PlatformType.BOUNCY
             is_spring = collision_platform.platform_type == PlatformType.SPRING
@@ -422,8 +419,6 @@ class PlayState(BaseState):
                 self.player.velocity.y = 0
                 
                 # Apply special platform effects while standing on them
-                from src.entities.platform import PlatformType
-                
                 if self.player.current_platform.platform_type == PlatformType.ICE:
                     # Ice platform - reduce friction (player slides more)
                     # This is handled by reducing the deceleration when not moving
@@ -648,7 +643,6 @@ class PlayState(BaseState):
         center_y = int(screen_pos.y + self.player.height / 2)
         
         # Draw pulsing shield circle with enhanced glow
-        import math
         pulse = abs(math.sin(pygame.time.get_ticks() * 0.005)) * 0.3 + 0.7
         base_radius = int(self.player.width * 0.8)
         radius = int(base_radius * pulse)
@@ -804,7 +798,6 @@ class PlayState(BaseState):
         icon_color = (*achievement.icon_color, alpha)
         
         # Draw star shape
-        import math
         star_points = []
         for i in range(10):
             angle = (i * 36 - 90) * math.pi / 180

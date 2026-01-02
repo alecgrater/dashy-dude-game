@@ -2,6 +2,7 @@
 Player character with advanced jump mechanics.
 """
 from enum import Enum
+import math
 import pygame
 from src.utils.constants import *
 from src.utils.math_utils import Vector2
@@ -484,7 +485,6 @@ class Player:
         
         # Draw "3X" text on hat - larger font
         font = pygame.font.Font(None, 32)
-        text_color = (255, 255, 255, int(self.hat_alpha))
         text_surface = font.render("3X", True, (255, 255, 255))
         
         # Apply alpha to text
@@ -566,8 +566,6 @@ class Player:
             screen: pygame.Surface to draw on
             player_pos: Player's current render position (x, y)
         """
-        import math
-        
         # Speed lines configuration
         num_lines = 4
         line_spacing = 12  # Vertical spacing between lines

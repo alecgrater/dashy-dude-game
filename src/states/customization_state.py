@@ -2,9 +2,8 @@
 Customization menu state for selecting themes.
 """
 import pygame
-import math
 from src.states.base_state import BaseState
-from src.systems.customization import CustomizationSystem, PlayerTheme, PlatformTheme, BackgroundTheme
+from src.systems.customization import PlayerTheme, PlatformTheme, BackgroundTheme
 from src.utils.constants import *
 
 

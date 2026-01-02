@@ -3,6 +3,8 @@ UI rendering system with animated elements.
 """
 import pygame
 import math
+import random
+import colorsys
 from src.utils.constants import *
 
 
@@ -163,7 +165,6 @@ class ComboIndicator:
         self.epic_bounce_y = -15.0 - new_level * 3.0  # Bounce up effect
         
         # Create burst particles - more for higher levels
-        import random
         color = COMBO_COLORS[min(new_level, len(COMBO_COLORS) - 1)]
         center_x = self.x + self.width // 2
         center_y = self.y + self.height // 2
@@ -1078,7 +1079,6 @@ class UIRenderer:
     
     def _hsv_to_rgb(self, h, s, v):
         """Convert HSV color to RGB tuple."""
-        import colorsys
         r, g, b = colorsys.hsv_to_rgb(h / 360.0, s, v)
         return (int(r * 255), int(g * 255), int(b * 255))
     

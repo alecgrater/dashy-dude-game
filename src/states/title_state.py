@@ -5,7 +5,6 @@ import pygame
 import math
 from src.states.base_state import BaseState
 from src.graphics.background import Background
-from src.systems.save_system import SaveSystem
 from src.utils.constants import *
 
 

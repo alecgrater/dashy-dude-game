@@ -3,6 +3,7 @@ Achievements menu state.
 """
 import pygame
 import math
+from datetime import datetime
 from src.states.base_state import BaseState
 from src.utils.constants import *
 
@@ -109,7 +110,6 @@ class AchievementsState(BaseState):
         if achievement.unlocked and achievement.unlock_date:
             date_font = pygame.font.Font(None, 16)
             # Format date nicely
-            from datetime import datetime
             try:
                 date_obj = datetime.fromisoformat(achievement.unlock_date)
                 date_str = date_obj.strftime("%b %d, %Y")

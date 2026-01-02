@@ -11,7 +11,6 @@ from src.systems.achievements import AchievementSystem
 from src.graphics.sprite_generator import SpriteGenerator
 from src.graphics.ui import UIRenderer
 from src.states.title_state import TitleState
-from src.states.play_state import PlayState
 
 
 class Game:

@@ -183,10 +183,7 @@ class SpriteGenerator:
         for i in range(4):
             surface = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT), pygame.SRCALPHA)
             
-            # Rotation effect
-            angle = i * 90
-            
-            # Body (slightly rotated appearance)
+            # Body (slightly rotated appearance based on frame)
             if i % 2 == 0:
                 body_rect = pygame.Rect(8, 8, 16, 20)
             else:

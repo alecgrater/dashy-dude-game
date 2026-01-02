@@ -83,7 +83,6 @@ class PlatformGenerator:
         )
         
         # Double jump adds extra distance from speed boost
-        double_jump_boost_distance = DOUBLE_JUMP_SPEED_BOOST * DOUBLE_JUMP_BOOST_DURATION
         double_jump_distance = calculate_jump_distance(
             PLAYER_RUN_SPEED + DOUBLE_JUMP_SPEED_BOOST, DOUBLE_JUMP_VELOCITY, GRAVITY
         )

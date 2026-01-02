@@ -2,6 +2,7 @@
 Platform entity with different types and behaviors.
 """
 from enum import Enum
+import random
 import pygame
 import math
 from src.utils.constants import *
@@ -182,7 +183,6 @@ class Platform:
         self.player_landed = False
         
         # Reset conveyor platform (randomize direction)
-        import random
         self.conveyor_direction = random.choice([-1, 1])
         
         # Reset disappearing platform
