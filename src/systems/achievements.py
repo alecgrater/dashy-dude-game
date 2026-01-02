@@ -5,7 +5,11 @@ from enum import Enum
 from typing import Dict, List, Callable
 import json
 import os
+import sys
 from datetime import datetime
+
+# Check if running in web environment (Pygbag/Emscripten)
+IS_WEB = sys.platform == 'emscripten'
 
 
 class AchievementType(Enum):
@@ -215,7 +219,26 @@ class AchievementSystem:
         )
     
     def load(self):
-        """Load achievement progress from file."""
+        """Load achievement progress from file or localStorage (web)."""
+        if IS_WEB:
+            # Use localStorage for web
+            try:
+                import platform
+                data_str = platform.window.localStorage.getItem('dashy_dude_achievements')
+                if data_str:
+                    data = json.loads(data_str)
+                    for achievement_data in data.get('achievements', []):
+                        achievement_type = AchievementType(achievement_data['type'])
+                        if achievement_type in self.achievements:
+                            saved_achievement = self.achievements[achievement_type]
+                            saved_achievement.unlocked = achievement_data.get('unlocked', False)
+                            saved_achievement.unlock_date = achievement_data.get('unlock_date')
+                            saved_achievement.progress = achievement_data.get('progress', 0)
+            except Exception as e:
+                print(f"Error loading achievements from localStorage: {e}")
+            return
+        
+        # File-based storage for desktop
         if not os.path.exists(self.save_file):
             return
         
@@ -235,15 +258,27 @@ class AchievementSystem:
             print(f"Error loading achievements: {e}")
     
     def save(self):
-        """Save achievement progress to file."""
+        """Save achievement progress to file or localStorage (web)."""
+        data = {
+            'achievements': [
+                achievement.to_dict()
+                for achievement in self.achievements.values()
+            ],
+            'last_updated': datetime.now().isoformat()
+        }
+        
+        if IS_WEB:
+            # Use localStorage for web
+            try:
+                import platform
+                platform.window.localStorage.setItem('dashy_dude_achievements', json.dumps(data))
+            except Exception as e:
+                print(f"Error saving achievements to localStorage: {e}")
+            return
+        
+        # File-based storage for desktop
         try:
-            data = {
-                'achievements': [
-                    achievement.to_dict()
-                    for achievement in self.achievements.values()
-                ],
-                'last_updated': datetime.now().isoformat()
-            }
+            os.makedirs(os.path.dirname(self.save_file), exist_ok=True)
             with open(self.save_file, 'w') as f:
                 json.dump(data, f, indent=2)
         except IOError as e:

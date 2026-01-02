@@ -16,21 +16,30 @@ class AudioManager:
     def __init__(self):
         """Initialize audio system."""
         # Initialize pygame mixer
-        pygame.mixer.init(
-            frequency=AUDIO_SAMPLE_RATE,
-            size=-16,  # 16-bit signed
-            channels=AUDIO_CHANNELS,
-            buffer=AUDIO_BUFFER_SIZE
-        )
+        try:
+            pygame.mixer.init(
+                frequency=AUDIO_SAMPLE_RATE,
+                size=-16,  # 16-bit signed
+                channels=AUDIO_CHANNELS,
+                buffer=AUDIO_BUFFER_SIZE
+            )
+        except Exception as e:
+            print(f"Warning: Could not initialize audio mixer: {e}")
         
         # Set master volume
-        pygame.mixer.music.set_volume(AUDIO_VOLUME * 0.5)  # Music quieter
+        try:
+            pygame.mixer.music.set_volume(AUDIO_VOLUME * 0.5)  # Music quieter
+        except Exception:
+            pass
         
         # Sound cache
         self.sounds = {}
         
-        # Generate all sounds
-        self._generate_sounds()
+        # Generate all sounds (with error handling for web)
+        try:
+            self._generate_sounds()
+        except Exception as e:
+            print(f"Warning: Could not generate sounds: {e}")
         
         # Music state
         self.music_playing = False
@@ -69,14 +78,8 @@ class AudioManager:
         
         self.sounds['rocket'] = self._generate_rocket_sound()
         
-        # Load base multiplier sound from file
-        try:
-            self.sounds['multiplier_base'] = pygame.mixer.Sound('assets/sounds/multiplier.wav')
-            print("Loaded multiplier sound from assets/sounds/multiplier.wav")
-        except Exception as e:
-            print(f"Warning: Could not load multiplier.wav, falling back to procedural sound: {e}")
-            # Fallback to procedural sound if file not found
-            self.sounds['multiplier_base'] = self._generate_multiplier_zing(2)
+        # Use procedural sound for multiplier (more reliable on web)
+        self.sounds['multiplier_base'] = self._generate_multiplier_zing(2)
         
         # Generate combo timeout sound (sad/deflating sound)
         self.sounds['combo_timeout'] = self._generate_combo_timeout_sound()
@@ -827,12 +830,7 @@ class AudioManager:
         """Start playing background music loop."""
         if not self.music_playing:
             try:
-                # Try to load custom music file
-                music_sound = pygame.mixer.Sound('assets/sounds/song_1.wav')
-                print("Loaded custom background music from assets/sounds/song_1.wav")
-            except Exception as e:
-                print(f"Warning: Could not load song_1.wav, using procedural music: {e}")
-                # Fallback to procedural music
+                # Use procedural music (more reliable on web)
                 music_data = self._generate_background_music()
                 
                 # Convert to 16-bit stereo
@@ -841,14 +839,17 @@ class AudioManager:
                 
                 # Create sound from generated music
                 music_sound = pygame.sndarray.make_sound(stereo_music)
-            
-            # Use a channel for looping
-            channel = pygame.mixer.Channel(0)  # Reserve channel 0 for music
-            channel.play(music_sound, loops=-1)  # Loop indefinitely
-            channel.set_volume(AUDIO_VOLUME * 0.3)  # Quieter than sound effects
-            
-            self.music_playing = True
-            print("Background music started")
+                
+                # Use a channel for looping
+                channel = pygame.mixer.Channel(0)  # Reserve channel 0 for music
+                channel.play(music_sound, loops=-1)  # Loop indefinitely
+                channel.set_volume(AUDIO_VOLUME * 0.3)  # Quieter than sound effects
+                
+                self.music_playing = True
+                print("Background music started")
+            except Exception as e:
+                print(f"Warning: Could not start music: {e}")
+                self.music_playing = False
     
     def stop_music(self):
         """Stop background music."""

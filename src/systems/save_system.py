@@ -3,8 +3,12 @@ High score and statistics persistence system.
 """
 import json
 import os
+import sys
 from datetime import datetime
 from typing import List, Dict, Optional
+
+# Check if running in web environment (Pygbag/Emscripten)
+IS_WEB = sys.platform == 'emscripten'
 
 
 class HighScoreEntry:
@@ -65,7 +69,32 @@ class SaveSystem:
         self.load()
     
     def load(self):
-        """Load high scores from file."""
+        """Load high scores from file or localStorage (web)."""
+        if IS_WEB:
+            # Use localStorage for web
+            try:
+                import platform
+                data_str = platform.window.localStorage.getItem('dashy_dude_save')
+                if data_str:
+                    data = json.loads(data_str)
+                    self.high_scores = [
+                        HighScoreEntry.from_dict(entry)
+                        for entry in data.get('scores', [])
+                    ]
+                    self.high_scores.sort(key=lambda x: x.score, reverse=True)
+                    self.high_scores = self.high_scores[:self.max_scores]
+                    self.customization = data.get('customization', {})
+                    self.settings = data.get('settings', {})
+                else:
+                    self.high_scores = []
+            except Exception as e:
+                print(f"Error loading from localStorage: {e}")
+                self.high_scores = []
+                self.customization = {}
+                self.settings = {}
+            return
+        
+        # File-based storage for desktop
         if not os.path.exists(self.save_file):
             self.high_scores = []
             return
@@ -92,14 +121,27 @@ class SaveSystem:
             self.settings = {}
     
     def save(self):
-        """Save high scores to file."""
+        """Save high scores to file or localStorage (web)."""
+        data = {
+            'scores': [entry.to_dict() for entry in self.high_scores],
+            'customization': self.customization,
+            'settings': self.settings,
+            'last_updated': datetime.now().isoformat()
+        }
+        
+        if IS_WEB:
+            # Use localStorage for web
+            try:
+                import platform
+                platform.window.localStorage.setItem('dashy_dude_save', json.dumps(data))
+            except Exception as e:
+                print(f"Error saving to localStorage: {e}")
+            return
+        
+        # File-based storage for desktop
         try:
-            data = {
-                'scores': [entry.to_dict() for entry in self.high_scores],
-                'customization': self.customization,
-                'settings': self.settings,
-                'last_updated': datetime.now().isoformat()
-            }
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(self.save_file), exist_ok=True)
             with open(self.save_file, 'w') as f:
                 json.dump(data, f, indent=2)
         except IOError as e:
