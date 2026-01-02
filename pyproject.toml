@@ -2,15 +2,10 @@
 name = "dashy-dude"
 version = "1.0.0"
 description = "A polished endless runner platformer game with helicopter glide mechanics"
-requires-python = ">=3.11"
+requires-python = ">=3.13.1"
 dependencies = [
     "pygame-ce>=2.4.0",
     "numpy>=1.26.0",
-]
-
-[project.optional-dependencies]
-web = [
-    "pygbag>=0.9.2",
 ]
 
 [tool.uv]
