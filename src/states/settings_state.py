@@ -68,6 +68,8 @@ class SettingsState(BaseState):
         
         if option['type'] == 'toggle':
             self.settings[option['key']] = not self.settings[option['key']]
+            # Update game settings immediately for real-time effect
+            self.game.settings[option['key']] = self.settings[option['key']]
         elif option['key'] == 'back':
             self.game.change_state('title')
     
@@ -77,6 +79,8 @@ class SettingsState(BaseState):
         
         if option['type'] == 'toggle':
             self.settings[option['key']] = not self.settings[option['key']]
+            # Update game settings immediately for real-time effect
+            self.game.settings[option['key']] = self.settings[option['key']]
     
     def update(self, dt):
         """Update settings state."""

@@ -509,6 +509,7 @@ class PlayState(BaseState):
                 
                 # Reset combo on death
                 self.game.ui_renderer.combo_count = 0
+                self.game.ui_renderer.combo_level = 0
                 self.game.ui_renderer.combo_timer = 0.0
                 self.previous_multiplier = 1  # Reset multiplier tracker
                 
@@ -542,9 +543,6 @@ class PlayState(BaseState):
                     self.player.set_magnet_active(False)
                 elif powerup_type == CollectibleType.DOUBLE_POINTS:
                     self.double_points_active = False
-                elif powerup_type == CollectibleType.EXTRA_JUMP:
-                    self.extra_jump_active = False
-                    self.player.max_jumps = 2  # Reset to normal
                 elif powerup_type == CollectibleType.SPEED_BOOST:
                     self.speed_boost_active = False
                     self.player.base_speed = PLAYER_RUN_SPEED  # Reset to normal
@@ -610,7 +608,8 @@ class PlayState(BaseState):
             
             elif collectible.type == CollectibleType.EXTRA_JUMP:
                 self.extra_jump_active = True
-                self.active_powerups[CollectibleType.EXTRA_JUMP] = duration
+                # Don't add to active_powerups since it doesn't expire with time
+                # It only expires when the third jump is used
                 self.player.max_jumps = 3  # Enable triple jump
                 self.player.triple_jump_used = False  # Track if triple jump has been used
             
@@ -708,6 +707,14 @@ class PlayState(BaseState):
                 'font': font
             })
         
+        # Extra jump (no timer - lasts until used)
+        if self.extra_jump_active:
+            powerup_texts.append({
+                'text': "3X JUMP",
+                'color': (50, 255, 50),
+                'font': large_font
+            })
+        
         # Timed power-ups
         for powerup_type, time_remaining in self.active_powerups.items():
             if powerup_type == CollectibleType.SPEED_BOOST:
@@ -722,10 +729,6 @@ class PlayState(BaseState):
                 color = (255, 165, 0)
                 label = "2X PTS"
                 use_large_font = False
-            elif powerup_type == CollectibleType.EXTRA_JUMP:
-                color = (50, 255, 50)
-                label = "3X JUMP"
-                use_large_font = True  # Make triple jump more prominent
             else:
                 continue
             

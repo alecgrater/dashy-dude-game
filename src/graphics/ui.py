@@ -106,7 +106,7 @@ class ScorePopup:
             glow_color = (255, 255, 0)  # Yellow glow
             font_size = 52  # Larger for power-ups
         elif self.combo > 1:
-            text = f"+{self.score} ×{self.combo}!"
+            text = f"+{self.score}"
             # Color based on combo level
             if self.combo >= 5:
                 base_color = (255, 50, 255)  # Magenta for high combos
@@ -183,7 +183,8 @@ class UIRenderer:
         
         # Animated elements
         self.score_popups = []
-        self.combo_count = 0
+        self.combo_count = 0  # Number of platforms landed on in current combo
+        self.combo_level = 0  # Current combo multiplier level (0-5)
         self.combo_timer = 0.0
         self.fade_alpha = 0  # For state transitions
         self.fade_direction = 0  # 0=none, 1=fade in, -1=fade out
@@ -370,55 +371,70 @@ class UIRenderer:
             self.combo_timer -= dt
             if self.combo_timer <= 0:
                 self.combo_count = 0
+                self.combo_level = 0
     
     def add_combo(self):
-        """Increment combo counter."""
+        """Increment combo counter and update level based on platforms per level."""
         self.combo_count += 1
         self.combo_timer = COMBO_TIMEOUT
+        
+        # Calculate combo level: every PLATFORMS_PER_COMBO_LEVEL platforms = 1 level
+        # Level 0 = no combo (0-4 platforms)
+        # Level 1 = 2x (5-9 platforms)
+        # Level 2 = 3x (10-14 platforms)
+        # etc., up to MAX_COMBO_LEVEL
+        self.combo_level = min(self.combo_count // PLATFORMS_PER_COMBO_LEVEL, MAX_COMBO_LEVEL)
     
     def get_combo_multiplier(self):
-        """Get current combo multiplier that scales infinitely."""
-        if self.combo_count <= 1:
-            return 1
-        elif self.combo_count <= 2:
-            return 2
-        elif self.combo_count <= 4:
-            return 3
-        elif self.combo_count <= 9:
-            return 4
-        elif self.combo_count <= 19:
-            return 5
-        else:
-            # After 20 combo, add 1 multiplier for every 10 additional combos
-            return 5 + ((self.combo_count - 20) // 10) + 1
+        """Get current combo multiplier based on combo level."""
+        # Level 0 = 1x, Level 1 = 2x, Level 2 = 3x, etc.
+        return self.combo_level + 1
     
     def render_combo(self, screen):
-        """Render combo counter if active."""
-        if self.combo_count > 1:
+        """Render combo counter if active, showing platform progress."""
+        if self.combo_count > 0:
             # Pulse effect based on timer (faster pulse for higher combos)
-            pulse_speed = min(10 + self.combo_count * 0.5, 20)
+            pulse_speed = min(10 + self.combo_level * 2, 20)
             pulse = 1.0 + 0.1 * math.sin(self.combo_timer * pulse_speed)
             
-            # Color based on combo level with gradient
-            if self.combo_count >= 20:
-                # Rainbow effect for mega combos
+            # Color based on combo level
+            if self.combo_level >= 5:
+                # Rainbow effect for max combo
                 hue = (self.combo_timer * 100) % 360
                 color = self._hsv_to_rgb(hue, 1.0, 1.0)
-            elif self.combo_count >= 10:
-                color = (255, 0, 255)  # Magenta
-            elif self.combo_count >= 5:
-                color = (255, 215, 0)  # Gold
-            elif self.combo_count >= 3:
-                color = (255, 165, 0)  # Orange
+            elif self.combo_level >= 4:
+                color = (255, 0, 255)  # Magenta for 5x
+            elif self.combo_level >= 3:
+                color = (255, 215, 0)  # Gold for 4x
+            elif self.combo_level >= 2:
+                color = (255, 165, 0)  # Orange for 3x
+            elif self.combo_level >= 1:
+                color = (100, 255, 100)  # Green for 2x
             else:
-                color = (255, 255, 255)  # White
+                color = (255, 255, 255)  # White for building combo
             
             multiplier = self.get_combo_multiplier()
-            text = f"COMBO x{multiplier} ({self.combo_count})"
             
-            # Larger font for higher combos (moderate increase)
+            # Calculate platforms in current level
+            platforms_in_level = self.combo_count % PLATFORMS_PER_COMBO_LEVEL
+            if platforms_in_level == 0 and self.combo_count > 0:
+                platforms_in_level = PLATFORMS_PER_COMBO_LEVEL
+            
+            # Show different text based on whether combo is active
+            if self.combo_level > 0:
+                # Active combo - show multiplier and progress to next level
+                if self.combo_level < MAX_COMBO_LEVEL:
+                    text = f"COMBO x{multiplier} ({platforms_in_level}/{PLATFORMS_PER_COMBO_LEVEL})"
+                else:
+                    # Max combo reached
+                    text = f"MAX COMBO x{multiplier}!"
+            else:
+                # Building first combo
+                text = f"Building Combo... ({platforms_in_level}/{PLATFORMS_PER_COMBO_LEVEL})"
+            
+            # Larger font for higher combos
             base_size = BUTTON_FONT_SIZE
-            if self.combo_count >= 10:
+            if self.combo_level >= 3:
                 base_size = int(BUTTON_FONT_SIZE * 1.3)
             
             font_size = int(base_size * pulse)

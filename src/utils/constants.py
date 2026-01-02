@@ -104,6 +104,8 @@ BUTTON_HOVER_SCALE = 1.1
 SCORE_PER_PLATFORM = 10
 COMBO_MULTIPLIER = 1.5
 COMBO_TIMEOUT = 2.0  # seconds without landing to reset combo
+PLATFORMS_PER_COMBO_LEVEL = 5  # platforms needed to increase combo level
+MAX_COMBO_LEVEL = 5  # maximum combo multiplier (5x)
 
 # Water settings
 WATER_LEVEL = SCREEN_HEIGHT - 100  # Y position of water surface

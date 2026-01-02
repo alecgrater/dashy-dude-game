@@ -215,7 +215,7 @@ class Game:
         pygame.display.flip()
     
     def _render_fps_counter(self):
-        """Render FPS counter and performance stats."""
+        """Render FPS counter with min and max values."""
         if not self.frame_times:
             return
         
@@ -232,7 +232,7 @@ class Game:
         else:
             min_fps = max_fps = fps
         
-        # Render FPS text
+        # Render FPS text on single line
         fps_text = f"FPS: {fps:.1f} (min: {min_fps:.1f}, max: {max_fps:.1f})"
         fps_surface = self.fps_font.render(fps_text, True, (255, 255, 0))
         
@@ -243,14 +243,3 @@ class Game:
         
         # Draw FPS text
         self.screen.blit(fps_surface, (10, 10))
-        
-        # Frame time in ms
-        frame_ms = avg_frame_time * 1000
-        ms_text = f"Frame: {frame_ms:.2f}ms"
-        ms_surface = self.fps_font.render(ms_text, True, (255, 255, 0))
-        
-        # Draw frame time
-        ms_bg_rect = ms_surface.get_rect(topleft=(10, 35))
-        ms_bg_rect.inflate_ip(10, 4)
-        pygame.draw.rect(self.screen, (0, 0, 0, 180), ms_bg_rect)
-        self.screen.blit(ms_surface, (10, 35))

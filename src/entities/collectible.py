@@ -75,7 +75,7 @@ class Collectible:
             'secondary_color': (100, 255, 100),  # Light green
             'size': 24,
             'points': 0,
-            'duration': 15.0,  # seconds
+            'duration': 0,  # No timer - lasts until third jump is used
             'description': 'Triple jump!'
         }
     }
