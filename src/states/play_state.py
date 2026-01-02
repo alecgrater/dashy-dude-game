@@ -184,7 +184,14 @@ class PlayState(BaseState):
         # Update UI animations
         self.game.ui_renderer.update_fade(dt)
         self.game.ui_renderer.update_score_popups(dt)
+        
+        # Track combo before update to detect resets
+        old_combo_count = self.game.ui_renderer.combo_count
         self.game.ui_renderer.update_combo(dt)
+        
+        # Reset multiplier tracker if combo was reset
+        if old_combo_count > 0 and self.game.ui_renderer.combo_count == 0:
+            self.previous_multiplier = 1
         
         if self.game_over or self.paused:
             return
@@ -366,8 +373,12 @@ class PlayState(BaseState):
             self.game.ui_renderer.add_combo()
             combo_multiplier = self.game.ui_renderer.get_combo_multiplier()
             
-            # Play ZING sound when multiplier increases
+            # Play ZING sound when multiplier increases (or when combo was reset)
             if combo_multiplier > self.previous_multiplier:
+                self.audio.play_multiplier_sound(combo_multiplier)
+                self.previous_multiplier = combo_multiplier
+            elif combo_multiplier >= 2 and self.previous_multiplier == 1:
+                # Combo was reset and we're starting fresh - play sound
                 self.audio.play_multiplier_sound(combo_multiplier)
                 self.previous_multiplier = combo_multiplier
             

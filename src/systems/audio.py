@@ -69,9 +69,14 @@ class AudioManager:
         
         self.sounds['rocket'] = self._generate_rocket_sound()
         
-        # Generate multiplier ZING sounds (x2 through x10+)
-        for multiplier in range(2, 11):
-            self.sounds[f'multiplier_{multiplier}'] = self._generate_multiplier_zing(multiplier)
+        # Load base multiplier sound from file
+        try:
+            self.sounds['multiplier_base'] = pygame.mixer.Sound('assets/sounds/multiplier.wav')
+            print("Loaded multiplier sound from assets/sounds/multiplier.wav")
+        except Exception as e:
+            print(f"Warning: Could not load multiplier.wav, falling back to procedural sound: {e}")
+            # Fallback to procedural sound if file not found
+            self.sounds['multiplier_base'] = self._generate_multiplier_zing(2)
     
     def _generate_multiplier_zing(self, multiplier):
         """
@@ -716,30 +721,60 @@ class AudioManager:
     
     def play_multiplier_sound(self, multiplier):
         """
-        Play the ZING sound for the given multiplier level.
+        Play the multiplier sound with pitch shifting based on multiplier level.
+        Higher multipliers = higher pitch for excitement.
         
         Args:
             multiplier: The multiplier level (2, 3, 4, 5, etc.)
         """
-        # Cap at x10 for sound selection (we generated up to x10)
-        sound_multiplier = min(multiplier, 10)
-        sound_name = f'multiplier_{sound_multiplier}'
-        
-        if sound_name in self.sounds:
-            self.sounds[sound_name].play()
+        if 'multiplier_base' in self.sounds:
+            # Get the base sound
+            base_sound = self.sounds['multiplier_base']
+            
+            # Calculate pitch shift based on multiplier
+            # Start at normal pitch for x2, increase by ~12% per level (roughly 2 semitones)
+            pitch_multiplier = 1.0 + (multiplier - 2) * 0.12
+            
+            # Get the sound array
+            sound_array = pygame.sndarray.array(base_sound)
+            
+            # Resample to change pitch (smaller array = higher pitch)
+            new_length = int(len(sound_array) / pitch_multiplier)
+            
+            # Use numpy interpolation to resample
+            indices = np.linspace(0, len(sound_array) - 1, new_length)
+            
+            # Interpolate for each channel
+            if len(sound_array.shape) == 2:  # Stereo
+                resampled = np.zeros((new_length, sound_array.shape[1]), dtype=sound_array.dtype)
+                for channel in range(sound_array.shape[1]):
+                    resampled[:, channel] = np.interp(indices, np.arange(len(sound_array)), sound_array[:, channel])
+            else:  # Mono
+                resampled = np.interp(indices, np.arange(len(sound_array)), sound_array)
+            
+            # Create and play the pitch-shifted sound with reduced volume
+            pitched_sound = pygame.sndarray.make_sound(resampled.astype(np.int16))
+            pitched_sound.set_volume(0.4)  # Play at 40% volume
+            pitched_sound.play()
     
     def play_music(self):
         """Start playing background music loop."""
         if not self.music_playing:
-            # Generate music
-            music_data = self._generate_background_music()
-            
-            # Convert to 16-bit stereo
-            music_data = np.clip(music_data * 32767, -32768, 32767).astype(np.int16)
-            stereo_music = np.column_stack((music_data, music_data))
-            
-            # Save to temporary sound and play on loop
-            music_sound = pygame.sndarray.make_sound(stereo_music)
+            try:
+                # Try to load custom music file
+                music_sound = pygame.mixer.Sound('assets/sounds/song_1.wav')
+                print("Loaded custom background music from assets/sounds/song_1.wav")
+            except Exception as e:
+                print(f"Warning: Could not load song_1.wav, using procedural music: {e}")
+                # Fallback to procedural music
+                music_data = self._generate_background_music()
+                
+                # Convert to 16-bit stereo
+                music_data = np.clip(music_data * 32767, -32768, 32767).astype(np.int16)
+                stereo_music = np.column_stack((music_data, music_data))
+                
+                # Create sound from generated music
+                music_sound = pygame.sndarray.make_sound(stereo_music)
             
             # Use a channel for looping
             channel = pygame.mixer.Channel(0)  # Reserve channel 0 for music

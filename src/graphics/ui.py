@@ -471,7 +471,7 @@ class UIRenderer:
     def _draw_comic_bubble(self, screen, x, y, width, height, pulse=1.0):
         """Draw a comic-style speech bubble background."""
         # Main bubble colors
-        bubble_fill = (135, 206, 250)  # Sky blue
+        bubble_fill = (220, 50, 50)  # Red background
         bubble_outline = (0, 0, 0)  # Black outline
         
         # Create a surface for the bubble with alpha
@@ -481,8 +481,8 @@ class UIRenderer:
         center_x = 40
         center_y = 40
         
-        # Draw simple circle
-        radius = min(width, height) * 0.5 * pulse
+        # Draw simple circle - slightly bigger
+        radius = min(width, height) * 0.55 * pulse
         circle_center = (int(center_x + width / 2), int(center_y + height / 2))
         
         # Draw filled circle
@@ -501,7 +501,7 @@ class UIRenderer:
                 # Check if point is inside the bubble
                 dist_to_center = math.sqrt((dot_x - circle_center[0])**2 + (dot_y - circle_center[1])**2)
                 if dist_to_center < radius * 0.7:
-                    pygame.draw.circle(bubble_surface, (100, 180, 230), (int(dot_x), int(dot_y)), dot_radius)
+                    pygame.draw.circle(bubble_surface, (180, 30, 30), (int(dot_x), int(dot_y)), dot_radius)
         
         # Blit the bubble surface to the screen
         screen.blit(bubble_surface, (x - 40, y - 40))
