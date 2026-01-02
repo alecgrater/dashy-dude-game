@@ -312,10 +312,8 @@ This document contains the next wave of improvements and features to enhance the
 * **Object Pooling**: Reuse particle and collectible objects
 * **Culling Improvements**: Better off-screen object culling
 * **Dirty Rectangle Rendering**: Only redraw changed areas
-* **FPS Counter**: Toggle with F3 key, show frame time graph
-* **Performance Profiler**: Built-in profiling tools
-* **Resolution Scaling**: Dynamic resolution for performance
-* **VSync Toggle**: Option to enable/disable VSync
+* **FPS Counter**: create a settings menu, have an option to turn it on 
+* **VSync Toggle**: Option to enable/disable VSync in the settings menu
 
 **Files to modify:**
 * `src/graphics/sprite_generator.py` - enhanced caching

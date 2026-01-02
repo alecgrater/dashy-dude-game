@@ -30,6 +30,7 @@ class TitleState(BaseState):
         self.play_button_rect = None
         self.customize_button_rect = None
         self.achievements_button_rect = None
+        self.settings_button_rect = None
         self.quit_button_rect = None
         self.mouse_pos = (0, 0)
         
@@ -118,6 +119,9 @@ class TitleState(BaseState):
         
         # Render achievements button
         self._render_achievements_button(screen)
+        
+        # Render settings button
+        self._render_settings_button(screen)
         
         # Render quit button
         self._render_quit_button(screen)
@@ -253,10 +257,38 @@ class TitleState(BaseState):
             is_hovered
         )
     
+    def _render_settings_button(self, screen):
+        """Render settings button."""
+        button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
+        button_y = SCREEN_HEIGHT // 2 + 130
+        
+        # Check if mouse is hovering
+        self.settings_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
+        is_hovered = self.settings_button_rect.collidepoint(self.mouse_pos)
+        
+        # Add pulse animation to button
+        pulse = 1.0 + math.sin(self.animation_time * 4) * 0.05 if is_hovered else 1.0
+        
+        # Draw button with scale
+        if pulse != 1.0:
+            scaled_width = int(BUTTON_WIDTH * pulse)
+            scaled_height = int(BUTTON_HEIGHT * pulse)
+            button_x = SCREEN_WIDTH // 2 - scaled_width // 2
+            button_y_adjusted = button_y + (BUTTON_HEIGHT - scaled_height) // 2
+            self.settings_button_rect = pygame.Rect(button_x, button_y_adjusted, scaled_width, scaled_height)
+        
+        # Render button using UI renderer
+        self.game.ui_renderer.render_button(
+            screen, "SETTINGS",
+            self.settings_button_rect.x, self.settings_button_rect.y,
+            self.settings_button_rect.width, self.settings_button_rect.height,
+            is_hovered
+        )
+    
     def _render_quit_button(self, screen):
         """Render quit button."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 + 130
+        button_y = SCREEN_HEIGHT // 2 + 200
         
         # Check if mouse is hovering
         self.quit_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -424,6 +456,9 @@ class TitleState(BaseState):
                 elif self.achievements_button_rect and self.achievements_button_rect.collidepoint(event.pos):
                     # Open achievements menu
                     self._open_achievements()
+                elif self.settings_button_rect and self.settings_button_rect.collidepoint(event.pos):
+                    # Open settings menu
+                    self._open_settings()
                 elif self.quit_button_rect and self.quit_button_rect.collidepoint(event.pos):
                     # Quit game
                     self._quit_game()
@@ -466,6 +501,18 @@ class TitleState(BaseState):
         if not hasattr(self.game, 'achievements_state'):
             self.game.achievements_state = AchievementsState(self.game)
         self.game.current_state = self.game.achievements_state
+        self.game.current_state.enter()
+    
+    def _open_settings(self):
+        """Open settings menu."""
+        print("Opening settings menu...")
+        self.exit()
+        
+        # Switch to settings state
+        from src.states.settings_state import SettingsState
+        if not hasattr(self.game, 'settings_state'):
+            self.game.settings_state = SettingsState(self.game)
+        self.game.current_state = self.game.settings_state
         self.game.current_state.enter()
     
     def _quit_game(self):

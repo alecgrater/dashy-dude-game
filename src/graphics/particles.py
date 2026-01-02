@@ -6,7 +6,7 @@ Handles dust, splash, helicopter trail, and other particle effects.
 import pygame
 import random
 import math
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from src.utils.constants import (
     PARTICLE_LIFETIME,
     MAX_PARTICLES,
@@ -21,9 +21,24 @@ from src.utils.constants import (
 
 
 class Particle:
-    """Base particle class."""
+    """Base particle class with object pooling support."""
     
-    def __init__(
+    def __init__(self):
+        """Initialize particle with default values."""
+        self.x = 0.0
+        self.y = 0.0
+        self.vx = 0.0
+        self.vy = 0.0
+        self.color = (255, 255, 255)
+        self.size = 1.0
+        self.max_lifetime = PARTICLE_LIFETIME
+        self.lifetime = 0.0
+        self.gravity_scale = 1.0
+        self.fade = True
+        self.initial_size = 1.0
+        self.active = False
+    
+    def reset(
         self,
         x: float,
         y: float,
@@ -35,6 +50,7 @@ class Particle:
         gravity_scale: float = 1.0,
         fade: bool = True,
     ):
+        """Reset particle with new values for reuse."""
         self.x = x
         self.y = y
         self.vx = vx
@@ -46,11 +62,16 @@ class Particle:
         self.gravity_scale = gravity_scale
         self.fade = fade
         self.initial_size = size
+        self.active = True
         
     def update(self, dt: float) -> bool:
-        """Update particle. Returns False if particle should be removed."""
+        """Update particle. Returns False if particle should be deactivated."""
+        if not self.active:
+            return False
+        
         self.lifetime -= dt
         if self.lifetime <= 0:
+            self.active = False
             return False
         
         # Apply velocity
@@ -69,7 +90,7 @@ class Particle:
     
     def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float):
         """Draw the particle."""
-        if self.lifetime <= 0:
+        if not self.active or self.lifetime <= 0:
             return
         
         # Calculate screen position
@@ -99,32 +120,56 @@ class Particle:
 
 
 class ParticleSystem:
-    """Manages all particle effects in the game."""
+    """Manages all particle effects in the game with object pooling."""
     
-    def __init__(self):
-        self.particles: List[Particle] = []
+    def __init__(self, pool_size: int = MAX_PARTICLES):
+        """
+        Initialize particle system with object pool.
+        
+        Args:
+            pool_size: Maximum number of particles in the pool
+        """
+        self.pool_size = pool_size
+        self.particle_pool: List[Particle] = [Particle() for _ in range(pool_size)]
+        self.active_particles: List[Particle] = []
         self.helicopter_timer = 0.0
+    
+    def _get_particle(self) -> Optional[Particle]:
+        """Get an inactive particle from the pool."""
+        # First, try to find an inactive particle in the pool
+        for particle in self.particle_pool:
+            if not particle.active:
+                return particle
+        
+        # If all particles are active, reuse the oldest active particle
+        if self.active_particles:
+            oldest = self.active_particles[0]
+            oldest.active = False
+            return oldest
+        
+        return None
         
     def update(self, dt: float):
-        """Update all particles and remove dead ones."""
-        self.particles = [p for p in self.particles if p.update(dt)]
-        
-        # Limit particle count
-        if len(self.particles) > MAX_PARTICLES:
-            self.particles = self.particles[-MAX_PARTICLES:]
+        """Update all active particles."""
+        # Update all active particles and remove inactive ones
+        self.active_particles = [p for p in self.active_particles if p.update(dt)]
         
         # Update helicopter timer
         if self.helicopter_timer > 0:
             self.helicopter_timer -= dt
     
     def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float):
-        """Draw all particles."""
-        for particle in self.particles:
+        """Draw all active particles."""
+        for particle in self.active_particles:
             particle.draw(surface, camera_x, camera_y)
     
     def emit_jump_dust(self, x: float, y: float, direction: int = 1):
         """Emit dust particles when jumping."""
         for _ in range(JUMP_PARTICLE_COUNT):
+            particle = self._get_particle()
+            if not particle:
+                break
+            
             # Random spread
             angle = random.uniform(-math.pi / 4, math.pi / 4) - math.pi / 2
             speed = random.uniform(50, 150)
@@ -134,8 +179,8 @@ class ParticleSystem:
             # Random size
             size = random.uniform(2, 4)
             
-            # Create particle
-            particle = Particle(
+            # Reset particle with new values
+            particle.reset(
                 x + random.uniform(-10, 10),
                 y,
                 vx,
@@ -145,12 +190,16 @@ class ParticleSystem:
                 lifetime=random.uniform(0.3, 0.6),
                 gravity_scale=0.5,
             )
-            self.particles.append(particle)
+            self.active_particles.append(particle)
     
     def emit_landing_impact(self, x: float, y: float, intensity: float = 1.0):
         """Emit impact particles when landing on platform."""
         count = int(LANDING_PARTICLE_COUNT * intensity)
         for _ in range(count):
+            particle = self._get_particle()
+            if not particle:
+                break
+            
             # Spread outward from landing point
             angle = random.uniform(-math.pi / 3, -2 * math.pi / 3)
             speed = random.uniform(100, 250) * intensity
@@ -160,8 +209,8 @@ class ParticleSystem:
             # Random size
             size = random.uniform(2, 5) * intensity
             
-            # Create particle
-            particle = Particle(
+            # Reset particle with new values
+            particle.reset(
                 x + random.uniform(-15, 15),
                 y,
                 vx,
@@ -171,7 +220,7 @@ class ParticleSystem:
                 lifetime=random.uniform(0.4, 0.8),
                 gravity_scale=0.8,
             )
-            self.particles.append(particle)
+            self.active_particles.append(particle)
     
     def emit_helicopter_trail(self, x: float, y: float, dt: float):
         """Emit continuous trail particles during helicopter mode."""
@@ -182,6 +231,10 @@ class ParticleSystem:
             
             # Create upward-moving particles
             for _ in range(2):
+                particle = self._get_particle()
+                if not particle:
+                    break
+                
                 # Random spread around player
                 offset_x = random.uniform(-8, 8)
                 offset_y = random.uniform(-5, 5)
@@ -193,8 +246,8 @@ class ParticleSystem:
                 # Random size
                 size = random.uniform(2, 4)
                 
-                # Create particle
-                particle = Particle(
+                # Reset particle with new values
+                particle.reset(
                     x + offset_x,
                     y + offset_y,
                     vx,
@@ -204,11 +257,15 @@ class ParticleSystem:
                     lifetime=random.uniform(0.3, 0.5),
                     gravity_scale=0.0,  # No gravity for helicopter particles
                 )
-                self.particles.append(particle)
+                self.active_particles.append(particle)
     
     def emit_double_jump_boost(self, x: float, y: float, direction: int = 1):
         """Emit speed boost trail particles during double jump."""
         for _ in range(8):
+            particle = self._get_particle()
+            if not particle:
+                break
+            
             # Backward trail effect
             angle = random.uniform(-math.pi / 6, math.pi / 6) + math.pi
             speed = random.uniform(100, 200)
@@ -218,8 +275,8 @@ class ParticleSystem:
             # Random size
             size = random.uniform(3, 6)
             
-            # Create particle with bright color
-            particle = Particle(
+            # Reset particle with bright color
+            particle.reset(
                 x + random.uniform(-5, 5),
                 y + random.uniform(-10, 10),
                 vx,
@@ -229,11 +286,15 @@ class ParticleSystem:
                 lifetime=random.uniform(0.2, 0.4),
                 gravity_scale=0.0,
             )
-            self.particles.append(particle)
+            self.active_particles.append(particle)
     
     def emit_water_splash(self, x: float, y: float):
         """Emit splash particles when player hits water."""
         for _ in range(20):
+            particle = self._get_particle()
+            if not particle:
+                break
+            
             # Spread outward and upward
             angle = random.uniform(-2 * math.pi / 3, -math.pi / 3)
             speed = random.uniform(150, 400)
@@ -243,8 +304,8 @@ class ParticleSystem:
             # Random size
             size = random.uniform(3, 7)
             
-            # Create particle
-            particle = Particle(
+            # Reset particle
+            particle.reset(
                 x + random.uniform(-20, 20),
                 y,
                 vx,
@@ -254,11 +315,15 @@ class ParticleSystem:
                 lifetime=random.uniform(0.5, 1.0),
                 gravity_scale=1.2,
             )
-            self.particles.append(particle)
+            self.active_particles.append(particle)
     
     def emit_platform_crumble(self, x: float, y: float, width: float):
         """Emit particles when platform crumbles."""
         for _ in range(15):
+            particle = self._get_particle()
+            if not particle:
+                break
+            
             # Random position across platform
             px = x + random.uniform(0, width)
             
@@ -269,8 +334,8 @@ class ParticleSystem:
             # Random size
             size = random.uniform(2, 5)
             
-            # Create particle with platform color
-            particle = Particle(
+            # Reset particle with platform color
+            particle.reset(
                 px,
                 y,
                 vx,
@@ -280,9 +345,15 @@ class ParticleSystem:
                 lifetime=random.uniform(0.6, 1.2),
                 gravity_scale=1.0,
             )
-            self.particles.append(particle)
+            self.active_particles.append(particle)
     
     def clear(self):
-        """Clear all particles."""
-        self.particles.clear()
+        """Clear all active particles and reset pool."""
+        for particle in self.active_particles:
+            particle.active = False
+        self.active_particles.clear()
         self.helicopter_timer = 0.0
+    
+    def get_active_count(self) -> int:
+        """Get the number of currently active particles."""
+        return len(self.active_particles)

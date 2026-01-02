@@ -31,6 +31,11 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         
+        # Performance tracking
+        self.fps_font = pygame.font.Font(None, 24)
+        self.frame_times = []
+        self.max_frame_samples = 60
+        
         # Fixed timestep
         self.dt = FIXED_DT
         
@@ -42,6 +47,14 @@ class Game:
         self.save_system = SaveSystem()
         self.achievement_system = AchievementSystem()
         self.customization = CustomizationSystem()
+        
+        # Load settings
+        self.settings = self.save_system.get_settings()
+        if not self.settings:
+            self.settings = {
+                'show_fps': False,
+                'vsync': True,
+            }
         
         # Load saved customization preferences
         saved_customization = self.save_system.get_customization()
@@ -110,8 +123,17 @@ class Game:
             # Render
             self.render()
             
-            # Cap frame rate
-            self.clock.tick(FPS)
+            # Cap frame rate with optional VSync
+            if self.settings.get('vsync', True):
+                self.clock.tick(FPS)
+            else:
+                self.clock.tick()
+            
+            # Track frame time for FPS counter
+            if self.settings.get('show_fps', False):
+                self.frame_times.append(frame_time)
+                if len(self.frame_times) > self.max_frame_samples:
+                    self.frame_times.pop(0)
         
         # Cleanup
         pygame.quit()
@@ -166,6 +188,11 @@ class Game:
             if not hasattr(self, 'achievements_state'):
                 self.achievements_state = AchievementsState(self)
             self.current_state = self.achievements_state
+        elif state_name == 'settings':
+            from src.states.settings_state import SettingsState
+            if not hasattr(self, 'settings_state'):
+                self.settings_state = SettingsState(self)
+            self.current_state = self.settings_state
         
         # Enter new state
         if self.current_state:
@@ -180,5 +207,50 @@ class Game:
         if self.current_state:
             self.current_state.render(self.screen)
         
+        # Render FPS counter if enabled
+        if self.settings.get('show_fps', False):
+            self._render_fps_counter()
+        
         # Update display
         pygame.display.flip()
+    
+    def _render_fps_counter(self):
+        """Render FPS counter and performance stats."""
+        if not self.frame_times:
+            return
+        
+        # Calculate average FPS
+        avg_frame_time = sum(self.frame_times) / len(self.frame_times)
+        fps = 1.0 / avg_frame_time if avg_frame_time > 0 else 0
+        
+        # Calculate min/max FPS
+        if len(self.frame_times) > 1:
+            max_frame_time = max(self.frame_times)
+            min_frame_time = min(self.frame_times)
+            min_fps = 1.0 / max_frame_time if max_frame_time > 0 else 0
+            max_fps = 1.0 / min_frame_time if min_frame_time > 0 else 0
+        else:
+            min_fps = max_fps = fps
+        
+        # Render FPS text
+        fps_text = f"FPS: {fps:.1f} (min: {min_fps:.1f}, max: {max_fps:.1f})"
+        fps_surface = self.fps_font.render(fps_text, True, (255, 255, 0))
+        
+        # Draw background for better visibility
+        bg_rect = fps_surface.get_rect(topleft=(10, 10))
+        bg_rect.inflate_ip(10, 4)
+        pygame.draw.rect(self.screen, (0, 0, 0, 180), bg_rect)
+        
+        # Draw FPS text
+        self.screen.blit(fps_surface, (10, 10))
+        
+        # Frame time in ms
+        frame_ms = avg_frame_time * 1000
+        ms_text = f"Frame: {frame_ms:.2f}ms"
+        ms_surface = self.fps_font.render(ms_text, True, (255, 255, 0))
+        
+        # Draw frame time
+        ms_bg_rect = ms_surface.get_rect(topleft=(10, 35))
+        ms_bg_rect.inflate_ip(10, 4)
+        pygame.draw.rect(self.screen, (0, 0, 0, 180), ms_bg_rect)
+        self.screen.blit(ms_surface, (10, 35))

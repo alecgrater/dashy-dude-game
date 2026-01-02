@@ -835,17 +835,34 @@ class PlayState(BaseState):
         screen.blit(notification_surface, (box_x, box_y))
     
     def render(self, screen):
-        """Render game visuals."""
+        """Render game visuals with improved culling."""
         # Render background
         self.background.render(screen, self.camera)
         
-        # Render platforms
+        # Calculate visible area with padding for smooth transitions
+        cull_padding = 200  # Extra pixels beyond screen edges
+        visible_left = self.camera.position.x - cull_padding
+        visible_right = self.camera.position.x + SCREEN_WIDTH + cull_padding
+        visible_top = self.camera.position.y - cull_padding
+        visible_bottom = self.camera.position.y + SCREEN_HEIGHT + cull_padding
+        
+        # Render platforms (with culling)
         platforms = self.platform_generator.get_platforms()
         platform_sprites = self.game.sprites.get('platforms', {})
+        rendered_platforms = 0
         for platform in platforms:
-            platform.render(screen, self.camera, platform_sprites)
+            # Cull platforms outside visible area
+            platform_right = platform.position.x + platform.width
+            platform_bottom = platform.position.y + platform.height
+            
+            if (platform_right >= visible_left and
+                platform.position.x <= visible_right and
+                platform_bottom >= visible_top and
+                platform.position.y <= visible_bottom):
+                platform.render(screen, self.camera, platform_sprites)
+                rendered_platforms += 1
         
-        # Render collectibles
+        # Render collectibles (culling is handled in spawner)
         self.collectible_spawner.render(screen, self.camera)
         
         # Render particles (behind player)

@@ -24,6 +24,8 @@ class SpriteGenerator:
             platform_colors: Dictionary with platform color scheme
         """
         self.sprite_cache = {}
+        self.platform_cache = {}  # Cache for different platform sizes
+        self.particle_cache = {}  # Cache for particles
         self.player_colors = player_colors or {
             'primary': PLAYER_PRIMARY,
             'secondary': PLAYER_SECONDARY,
@@ -40,14 +42,16 @@ class SpriteGenerator:
         }
     
     def set_player_colors(self, colors: Dict[str, Tuple[int, int, int]]):
-        """Update player colors and clear cache."""
+        """Update player colors and clear related caches."""
         self.player_colors = colors
         self.sprite_cache.pop('player', None)
+        self.particle_cache.clear()  # Particles may use player colors
     
     def set_platform_colors(self, colors: Dict[str, Tuple[int, int, int]]):
-        """Update platform colors and clear cache."""
+        """Update platform colors and clear related caches."""
         self.platform_colors = colors
         self.sprite_cache.pop('platforms', None)
+        self.platform_cache.clear()  # Clear platform size cache
     
     def generate_all_sprites(self):
         """
@@ -289,91 +293,73 @@ class SpriteGenerator:
     
     def _generate_static_platform(self):
         """Generate standard platform sprite."""
-        width = MAX_PLATFORM_WIDTH
+        return self._generate_platform_with_size('static', MAX_PLATFORM_WIDTH)
+    
+    def _generate_platform_with_size(self, platform_type: str, width: int):
+        """
+        Generate platform sprite with specific width (cached).
+        
+        Args:
+            platform_type: Type of platform ('static', 'moving', 'small', 'crumbling')
+            width: Width of the platform
+        
+        Returns:
+            Cached or newly generated platform sprite
+        """
+        cache_key = f"{platform_type}_{width}"
+        
+        # Check cache first
+        if cache_key in self.platform_cache:
+            return self.platform_cache[cache_key]
+        
         height = PLATFORM_HEIGHT
         surface = pygame.Surface((width, height), pygame.SRCALPHA)
         
-        # Grass top
-        pygame.draw.rect(surface, self.platform_colors['top'], (0, 0, width, 4))
-        
-        # Main body
-        pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
-        
-        # Highlight
-        pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
+        # Draw based on platform type
+        if platform_type == 'static':
+            pygame.draw.rect(surface, self.platform_colors['top'], (0, 0, width, 4))
+            pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
+            pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
+        elif platform_type == 'moving':
+            pygame.draw.rect(surface, self.platform_colors['moving'], (0, 0, width, 4))
+            pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
+            pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
+            # Arrows to indicate movement
+            for x in range(10, width - 10, 20):
+                pygame.draw.polygon(surface, self.platform_colors['moving'],
+                    [(x, 8), (x + 4, 12), (x, 16)])
+        elif platform_type == 'small':
+            pygame.draw.rect(surface, self.platform_colors['small'], (0, 0, width, 4))
+            pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
+            pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
+        elif platform_type == 'crumbling':
+            pygame.draw.rect(surface, self.platform_colors['crumbling'], (0, 0, width, 4))
+            pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
+            # Cracks
+            for x in range(5, width, 15):
+                pygame.draw.line(surface, self.player_colors['outline'], (x, 6), (x + 3, 10), 1)
+                pygame.draw.line(surface, self.player_colors['outline'], (x + 3, 10), (x + 1, 14), 1)
         
         # Scale up
         scaled = pygame.transform.scale(surface,
             (width * PLATFORM_SCALE, height * PLATFORM_SCALE))
         
+        # Cache the result
+        self.platform_cache[cache_key] = scaled
+        
         return scaled
     
     def _generate_moving_platform(self):
         """Generate moving platform with purple tint."""
-        width = MAX_PLATFORM_WIDTH
-        height = PLATFORM_HEIGHT
-        surface = pygame.Surface((width, height), pygame.SRCALPHA)
-        
-        # Purple grass top
-        pygame.draw.rect(surface, self.platform_colors['moving'], (0, 0, width, 4))
-        
-        # Main body
-        pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
-        
-        # Highlight
-        pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
-        
-        # Arrows to indicate movement
-        for x in range(10, width - 10, 20):
-            pygame.draw.polygon(surface, self.platform_colors['moving'],
-                [(x, 8), (x + 4, 12), (x, 16)])
-        
-        scaled = pygame.transform.scale(surface,
-            (width * PLATFORM_SCALE, height * PLATFORM_SCALE))
-        
-        return scaled
+        return self._generate_platform_with_size('moving', MAX_PLATFORM_WIDTH)
     
     def _generate_small_platform(self):
         """Generate small platform with yellow tint."""
-        width = SMALL_PLATFORM_WIDTH
-        height = PLATFORM_HEIGHT
-        surface = pygame.Surface((width, height), pygame.SRCALPHA)
-        
-        # Yellow grass top
-        pygame.draw.rect(surface, self.platform_colors['small'], (0, 0, width, 4))
-        
-        # Main body
-        pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
-        
-        # Highlight
-        pygame.draw.rect(surface, self.platform_colors['highlight'], (0, 4, width, 2))
-        
-        scaled = pygame.transform.scale(surface,
-            (width * PLATFORM_SCALE, height * PLATFORM_SCALE))
-        
-        return scaled
+        return self._generate_platform_with_size('small', SMALL_PLATFORM_WIDTH)
     
     def _generate_crumbling_platform(self):
         """Generate crumbling platform with red tint and cracks."""
-        width = MAX_PLATFORM_WIDTH
-        height = PLATFORM_HEIGHT
-        surface = pygame.Surface((width, height), pygame.SRCALPHA)
-        
-        # Red grass top
-        pygame.draw.rect(surface, self.platform_colors['crumbling'], (0, 0, width, 4))
-        
-        # Main body
-        pygame.draw.rect(surface, self.platform_colors['base'], (0, 4, width, height - 4))
-        
-        # Cracks
-        for x in range(5, width, 15):
-            pygame.draw.line(surface, self.player_colors['outline'], (x, 6), (x + 3, 10), 1)
-            pygame.draw.line(surface, self.player_colors['outline'], (x + 3, 10), (x + 1, 14), 1)
-        
-        scaled = pygame.transform.scale(surface,
-            (width * PLATFORM_SCALE, height * PLATFORM_SCALE))
-        
-        return scaled
+        return self._generate_platform_with_size('crumbling', MAX_PLATFORM_WIDTH)
     
     def generate_particle_sprites(self):
         """
@@ -389,22 +375,53 @@ class SpriteGenerator:
         }
     
     def _generate_dust_particle(self):
-        """Generate dust particle sprite."""
+        """Generate dust particle sprite (cached)."""
+        if 'dust' in self.particle_cache:
+            return self.particle_cache['dust']
+        
         size = 8
         surface = pygame.Surface((size, size), pygame.SRCALPHA)
         pygame.draw.circle(surface, PARTICLE_DUST, (size // 2, size // 2), size // 2)
+        self.particle_cache['dust'] = surface
         return surface
     
     def _generate_helicopter_particle(self):
-        """Generate helicopter trail particle."""
+        """Generate helicopter trail particle (cached)."""
+        if 'helicopter' in self.particle_cache:
+            return self.particle_cache['helicopter']
+        
         size = 12
         surface = pygame.Surface((size, size), pygame.SRCALPHA)
         pygame.draw.circle(surface, PARTICLE_HELICOPTER, (size // 2, size // 2), size // 2)
+        self.particle_cache['helicopter'] = surface
         return surface
     
     def _generate_splash_particle(self):
-        """Generate water splash particle."""
+        """Generate water splash particle (cached)."""
+        if 'splash' in self.particle_cache:
+            return self.particle_cache['splash']
+        
         size = 16
         surface = pygame.Surface((size, size), pygame.SRCALPHA)
         pygame.draw.circle(surface, PARTICLE_SPLASH, (size // 2, size // 2), size // 2)
+        self.particle_cache['splash'] = surface
         return surface
+    
+    def get_cached_platform(self, platform_type: str, width: int):
+        """
+        Get a cached platform sprite or generate if not cached.
+        
+        Args:
+            platform_type: Type of platform
+            width: Width of the platform
+        
+        Returns:
+            Platform sprite surface
+        """
+        return self._generate_platform_with_size(platform_type, width)
+    
+    def clear_cache(self):
+        """Clear all sprite caches to free memory."""
+        self.sprite_cache.clear()
+        self.platform_cache.clear()
+        self.particle_cache.clear()

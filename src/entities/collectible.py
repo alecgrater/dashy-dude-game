@@ -80,6 +80,9 @@ class Collectible:
         }
     }
     
+    # Class-level sprite cache (shared across all instances)
+    _sprite_cache = {}
+    
     def __init__(self, x, y, collectible_type):
         """
         Initialize collectible.
@@ -116,6 +119,81 @@ class Collectible:
         self.velocity = Vector2(0, 0)
         self.attracted = False
         self.attraction_speed = 800.0  # pixels/second
+        
+        # Pre-render sprite if not cached
+        if collectible_type not in Collectible._sprite_cache:
+            self._cache_sprite()
+    
+    def _cache_sprite(self):
+        """Pre-render and cache the collectible sprite."""
+        # Create surface with alpha channel
+        size = self.size * 2  # Extra space for effects
+        surface = pygame.Surface((size, size), pygame.SRCALPHA)
+        center = size // 2
+        
+        # Render to surface based on type
+        if self.type == CollectibleType.COIN:
+            pygame.draw.circle(surface, self.color, (center, center), self.size // 2)
+            pygame.draw.circle(surface, self.secondary_color, (center, center), self.size // 3)
+            pygame.draw.circle(surface, self.color, (center, center), self.size // 6)
+        
+        elif self.type == CollectibleType.SPEED_BOOST:
+            pygame.draw.circle(surface, self.secondary_color, (center, center), self.size // 2)
+            points = [
+                (center, center - self.size // 3),
+                (center - self.size // 6, center),
+                (center + self.size // 8, center),
+                (center - self.size // 8, center + self.size // 3),
+                (center + self.size // 6, center - self.size // 8),
+                (center - self.size // 8, center - self.size // 8)
+            ]
+            pygame.draw.polygon(surface, self.color, points)
+        
+        elif self.type == CollectibleType.SHIELD:
+            points = [
+                (center, center - self.size // 2),
+                (center + self.size // 3, center - self.size // 4),
+                (center + self.size // 3, center + self.size // 4),
+                (center, center + self.size // 2),
+                (center - self.size // 3, center + self.size // 4),
+                (center - self.size // 3, center - self.size // 4)
+            ]
+            pygame.draw.polygon(surface, self.color, points)
+            pygame.draw.polygon(surface, self.secondary_color, points, 3)
+        
+        elif self.type == CollectibleType.MAGNET:
+            rect_width = self.size // 4
+            rect_height = self.size // 2
+            pygame.draw.rect(surface, self.color,
+                            (center - self.size // 3, center - rect_height // 2, rect_width, rect_height))
+            pygame.draw.rect(surface, self.secondary_color,
+                            (center + self.size // 3 - rect_width, center - rect_height // 2, rect_width, rect_height))
+            pygame.draw.rect(surface, self.color,
+                            (center - self.size // 3, center + rect_height // 2 - rect_width,
+                             self.size * 2 // 3, rect_width))
+        
+        elif self.type == CollectibleType.DOUBLE_POINTS:
+            pygame.draw.circle(surface, self.secondary_color, (center, center), self.size // 2)
+            font = pygame.font.Font(None, self.size)
+            text = font.render("2x", True, self.color)
+            text_rect = text.get_rect(center=(center, center))
+            surface.blit(text, text_rect)
+        
+        elif self.type == CollectibleType.EXTRA_JUMP:
+            pygame.draw.circle(surface, self.secondary_color, (center, center), self.size // 2)
+            points = [
+                (center, center - self.size // 3),
+                (center + self.size // 4, center),
+                (center + self.size // 8, center),
+                (center + self.size // 8, center + self.size // 3),
+                (center - self.size // 8, center + self.size // 3),
+                (center - self.size // 8, center),
+                (center - self.size // 4, center)
+            ]
+            pygame.draw.polygon(surface, self.color, points)
+        
+        # Cache the surface
+        Collectible._sprite_cache[self.type] = surface
     
     def update(self, dt, player_pos=None, magnet_active=False):
         """
@@ -179,114 +257,27 @@ class Collectible:
     
     def render(self, screen, camera):
         """
-        Render collectible with animations.
+        Render collectible with animations using cached sprite (optimized).
         
         Args:
             screen: pygame.Surface to draw on
             camera: Camera instance
         """
+        # Get cached sprite
+        cached_sprite = Collectible._sprite_cache.get(self.type)
+        if not cached_sprite:
+            return
+        
         # Get screen position
         screen_pos = camera.world_to_screen(self.position)
         x = int(screen_pos.x)
         y = int(screen_pos.y + self.float_offset)
         
-        # Apply pulse scale
-        size = int(self.size * self.pulse_scale)
-        
-        # Draw based on type
-        if self.type == CollectibleType.COIN:
-            self._render_coin(screen, x, y, size)
-        elif self.type == CollectibleType.SPEED_BOOST:
-            self._render_speed_boost(screen, x, y, size)
-        elif self.type == CollectibleType.SHIELD:
-            self._render_shield(screen, x, y, size)
-        elif self.type == CollectibleType.MAGNET:
-            self._render_magnet(screen, x, y, size)
-        elif self.type == CollectibleType.DOUBLE_POINTS:
-            self._render_double_points(screen, x, y, size)
-        elif self.type == CollectibleType.EXTRA_JUMP:
-            self._render_extra_jump(screen, x, y, size)
+        # Skip pulse scaling for better performance - use cached sprite directly
+        sprite_size = cached_sprite.get_width()
+        screen.blit(cached_sprite, (x - sprite_size // 2, y - sprite_size // 2))
     
-    def _render_coin(self, screen, x, y, size):
-        """Render coin collectible."""
-        # Outer circle (gold)
-        pygame.draw.circle(screen, self.color, (x, y), size // 2)
-        # Inner circle (yellow)
-        pygame.draw.circle(screen, self.secondary_color, (x, y), size // 3)
-        # Center dot
-        pygame.draw.circle(screen, self.color, (x, y), size // 6)
-    
-    def _render_speed_boost(self, screen, x, y, size):
-        """Render speed boost power-up (lightning bolt)."""
-        # Background circle
-        pygame.draw.circle(screen, self.secondary_color, (x, y), size // 2)
-        
-        # Lightning bolt shape
-        points = [
-            (x, y - size // 3),
-            (x - size // 6, y),
-            (x + size // 8, y),
-            (x - size // 8, y + size // 3),
-            (x + size // 6, y - size // 8),
-            (x - size // 8, y - size // 8)
-        ]
-        pygame.draw.polygon(screen, self.color, points)
-    
-    def _render_shield(self, screen, x, y, size):
-        """Render shield power-up."""
-        # Shield shape
-        points = [
-            (x, y - size // 2),
-            (x + size // 3, y - size // 4),
-            (x + size // 3, y + size // 4),
-            (x, y + size // 2),
-            (x - size // 3, y + size // 4),
-            (x - size // 3, y - size // 4)
-        ]
-        pygame.draw.polygon(screen, self.color, points)
-        pygame.draw.polygon(screen, self.secondary_color, points, 3)
-    
-    def _render_magnet(self, screen, x, y, size):
-        """Render magnet power-up (horseshoe magnet)."""
-        # U-shape magnet
-        rect_width = size // 4
-        rect_height = size // 2
-        
-        # Left bar
-        pygame.draw.rect(screen, self.color, 
-                        (x - size // 3, y - rect_height // 2, rect_width, rect_height))
-        # Right bar
-        pygame.draw.rect(screen, self.secondary_color,
-                        (x + size // 3 - rect_width, y - rect_height // 2, rect_width, rect_height))
-        # Bottom connector
-        pygame.draw.rect(screen, self.color,
-                        (x - size // 3, y + rect_height // 2 - rect_width, 
-                         size * 2 // 3, rect_width))
-    
-    def _render_double_points(self, screen, x, y, size):
-        """Render double points power-up (2x symbol)."""
-        # Background circle
-        pygame.draw.circle(screen, self.secondary_color, (x, y), size // 2)
-        
-        # Draw "2x" text
-        font = pygame.font.Font(None, size)
-        text = font.render("2x", True, self.color)
-        text_rect = text.get_rect(center=(x, y))
-        screen.blit(text, text_rect)
-    
-    def _render_extra_jump(self, screen, x, y, size):
-        """Render extra jump power-up (up arrow)."""
-        # Background circle
-        pygame.draw.circle(screen, self.secondary_color, (x, y), size // 2)
-        
-        # Up arrow
-        points = [
-            (x, y - size // 3),
-            (x + size // 4, y),
-            (x + size // 8, y),
-            (x + size // 8, y + size // 3),
-            (x - size // 8, y + size // 3),
-            (x - size // 8, y),
-            (x - size // 4, y)
-        ]
-        pygame.draw.polygon(screen, self.color, points)
+    @classmethod
+    def clear_cache(cls):
+        """Clear the sprite cache (useful when changing themes)."""
+        cls._sprite_cache.clear()

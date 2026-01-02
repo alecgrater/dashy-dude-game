@@ -31,9 +31,13 @@ class CollectibleSpawner:
         self.last_spawn_x = 0
         self.min_spawn_interval = 200  # Minimum pixels between spawns
         
-        # Spawn rates (chance per platform)
-        self.coin_spawn_chance = 0.4  # 40% chance per platform
-        self.powerup_spawn_chance = 0.15  # 15% chance per platform
+        # Spawn rates (chance per platform) - REDUCED for performance
+        self.coin_spawn_chance = 0.25  # Reduced from 0.4 (25% instead of 40%)
+        self.powerup_spawn_chance = 0.10  # Reduced from 0.15 (10% instead of 15%)
+        
+        # Performance limits
+        self.max_active_collectibles = 40  # Hard limit on active collectibles
+        self.max_visible_collectibles = 30  # Limit visible on screen at once
         
         # Difficulty scaling
         self.difficulty_multiplier = 1.0
@@ -59,14 +63,24 @@ class CollectibleSpawner:
             elif not collectible.alive:
                 self.collectibles.remove(collectible)
         
+        # Check if we're at the collectible limit
+        active_count = sum(1 for c in self.collectibles if not c.collected)
+        if active_count >= self.max_active_collectibles:
+            return  # Don't spawn more if at limit
+        
         # Spawn new collectibles near platforms
         spawn_x = camera_x + self.spawn_distance
         
         for platform in platforms:
             # Check if platform is in spawn range and we haven't spawned here yet
-            if (platform.position.x > self.last_spawn_x and 
+            if (platform.position.x > self.last_spawn_x and
                 platform.position.x < spawn_x and
                 platform.position.x > camera_x):
+                
+                # Check limit again before spawning
+                active_count = sum(1 for c in self.collectibles if not c.collected)
+                if active_count >= self.max_active_collectibles:
+                    break  # Stop spawning if at limit
                 
                 # Try to spawn collectible above this platform
                 if random.random() < self.coin_spawn_chance * self.difficulty_multiplier:
@@ -177,12 +191,36 @@ class CollectibleSpawner:
     
     def render(self, screen, camera):
         """
-        Render all collectibles.
+        Render all collectibles with culling optimization and visible limit.
         
         Args:
             screen: pygame.Surface to draw on
             camera: Camera instance
         """
+        # Calculate visible area with padding
+        from src.utils.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+        cull_padding = 100  # Smaller padding for collectibles
+        visible_left = camera.position.x - cull_padding
+        visible_right = camera.position.x + SCREEN_WIDTH + cull_padding
+        visible_top = camera.position.y - cull_padding
+        visible_bottom = camera.position.y + SCREEN_HEIGHT + cull_padding
+        
+        # Only render collectibles within visible area, with a hard limit
+        rendered_count = 0
         for collectible in self.collectibles:
             if not collectible.collected:
-                collectible.render(screen, camera)
+                # Stop rendering if we hit the visible limit
+                if rendered_count >= self.max_visible_collectibles:
+                    break
+                
+                # Cull collectibles outside visible area
+                if (collectible.position.x >= visible_left and
+                    collectible.position.x <= visible_right and
+                    collectible.position.y >= visible_top and
+                    collectible.position.y <= visible_bottom):
+                    collectible.render(screen, camera)
+                    rendered_count += 1
+    
+    def get_active_count(self):
+        """Get the number of active (uncollected) collectibles."""
+        return sum(1 for c in self.collectibles if not c.collected)

@@ -86,10 +86,10 @@ HELICOPTER_FPS = 16
 
 # Particle settings
 PARTICLE_LIFETIME = 0.5  # seconds
-MAX_PARTICLES = 50
-JUMP_PARTICLE_COUNT = 5
-LANDING_PARTICLE_COUNT = 8
-HELICOPTER_PARTICLE_INTERVAL = 0.05  # seconds between particles
+MAX_PARTICLES = 30  # Reduced from 50 for better performance
+JUMP_PARTICLE_COUNT = 3  # Reduced from 5
+LANDING_PARTICLE_COUNT = 5  # Reduced from 8
+HELICOPTER_PARTICLE_INTERVAL = 0.08  # Increased from 0.05 (fewer particles)
 
 # UI settings
 UI_PADDING = 20

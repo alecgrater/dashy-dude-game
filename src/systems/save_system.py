@@ -61,6 +61,7 @@ class SaveSystem:
         self.high_scores: List[HighScoreEntry] = []
         self.max_scores = 10  # Keep top 10 scores
         self.customization: Dict = {}  # Store customization preferences
+        self.settings: Dict = {}  # Store game settings
         self.load()
     
     def load(self):
@@ -82,10 +83,13 @@ class SaveSystem:
                 self.high_scores = self.high_scores[:self.max_scores]
                 # Load customization preferences
                 self.customization = data.get('customization', {})
+                # Load settings
+                self.settings = data.get('settings', {})
         except (json.JSONDecodeError, IOError) as e:
             print(f"Error loading high scores: {e}")
             self.high_scores = []
             self.customization = {}
+            self.settings = {}
     
     def save(self):
         """Save high scores to file."""
@@ -93,6 +97,7 @@ class SaveSystem:
             data = {
                 'scores': [entry.to_dict() for entry in self.high_scores],
                 'customization': self.customization,
+                'settings': self.settings,
                 'last_updated': datetime.now().isoformat()
             }
             with open(self.save_file, 'w') as f:
@@ -181,6 +186,20 @@ class SaveSystem:
     def get_customization(self) -> Dict:
         """Get saved customization preferences."""
         return self.customization.copy()
+    
+    def save_settings(self, settings_dict: Dict):
+        """
+        Save game settings.
+        
+        Args:
+            settings_dict: Dictionary of game settings
+        """
+        self.settings = settings_dict
+        self.save()
+    
+    def get_settings(self) -> Dict:
+        """Get saved game settings."""
+        return self.settings.copy()
     
     def clear_scores(self):
         """Clear all high scores (for testing/reset)."""
