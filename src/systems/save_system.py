@@ -1,4 +1,4 @@
-1"""
+"""
 High score and statistics persistence system.
 """
 import json
