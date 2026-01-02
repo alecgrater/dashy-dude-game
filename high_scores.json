@@ -175,8 +175,8 @@
     "background_theme": "forest"
   },
   "settings": {
-    "show_fps": false,
+    "show_fps": true,
     "vsync": true
   },
-  "last_updated": "2026-01-02T17:03:10.765529"
+  "last_updated": "2026-01-02T18:07:45.431012"
 }

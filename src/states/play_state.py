@@ -187,7 +187,7 @@ class PlayState(BaseState):
         
         # Track combo before update to detect resets
         old_combo_count = self.game.ui_renderer.combo_count
-        self.game.ui_renderer.update_combo(dt)
+        self.game.ui_renderer.update_combo(dt, self.audio)
         
         # Reset multiplier tracker if combo was reset
         if old_combo_count > 0 and self.game.ui_renderer.combo_count == 0:

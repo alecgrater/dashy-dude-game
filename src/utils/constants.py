@@ -107,6 +107,27 @@ COMBO_TIMEOUT = 2.0  # seconds without landing to reset combo
 PLATFORMS_PER_COMBO_LEVEL = 5  # platforms needed to increase combo level
 MAX_COMBO_LEVEL = 5  # maximum combo multiplier (5x)
 
+# Combo Indicator UI
+COMBO_INDICATOR_WIDTH = 180
+COMBO_INDICATOR_HEIGHT = 200  # Reduced from 280
+COMBO_INDICATOR_PADDING = 20
+COMBO_TIMER_BAR_HEIGHT = 20  # Reduced from 30
+COMBO_CAPSULE_WIDTH = 26  # Reduced from 30
+COMBO_CAPSULE_HEIGHT = 30  # Reduced from 40
+COMBO_CAPSULE_SPACING = 6  # Reduced from 8
+COMBO_CIRCLE_RADIUS = 35  # Reduced from 50
+COMBO_SCORE_FONT_SIZE = 32  # For score display in indicator
+
+# Combo level colors (for multipliers 1x through 6x)
+COMBO_COLORS = [
+    (100, 100, 100),    # 1x - Gray (no combo)
+    (100, 255, 100),    # 2x - Green
+    (255, 165, 0),      # 3x - Orange
+    (255, 215, 0),      # 4x - Gold
+    (255, 0, 255),      # 5x - Magenta
+    (255, 50, 255),     # 6x - Pink (max)
+]
+
 # Water settings
 WATER_LEVEL = SCREEN_HEIGHT - 100  # Y position of water surface
 WATER_WAVE_AMPLITUDE = 5  # pixels

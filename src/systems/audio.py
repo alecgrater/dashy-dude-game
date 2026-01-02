@@ -77,6 +77,9 @@ class AudioManager:
             print(f"Warning: Could not load multiplier.wav, falling back to procedural sound: {e}")
             # Fallback to procedural sound if file not found
             self.sounds['multiplier_base'] = self._generate_multiplier_zing(2)
+        
+        # Generate combo timeout sound (sad/deflating sound)
+        self.sounds['combo_timeout'] = self._generate_combo_timeout_sound()
     
     def _generate_multiplier_zing(self, multiplier):
         """
@@ -352,6 +355,69 @@ class AudioManager:
         
         # Normalize and apply volume
         wave = wave / np.max(np.abs(wave)) * 0.5
+        
+        # Convert to 16-bit stereo
+        wave = np.clip(wave * 32767, -32768, 32767).astype(np.int16)
+        stereo_wave = np.column_stack((wave, wave))
+        
+        return pygame.sndarray.make_sound(stereo_wave)
+    
+    def _generate_combo_timeout_sound(self):
+        """
+        Generate a quick "fizzle out" sound for when combo times out.
+        Distinctly different from death sound - more like air escaping or sparkles fading.
+        
+        Returns:
+            pygame.Sound object
+        """
+        duration = 0.25  # Shorter than death sound
+        sample_count = int(AUDIO_SAMPLE_RATE * duration)
+        t = np.linspace(0, duration, sample_count, False)
+        
+        # High-pitched fizzle (very different from death's low sweep)
+        # Multiple high frequencies that fade out like sparkles
+        wave = np.zeros(sample_count)
+        
+        # Sparkle/fizzle frequencies (high pitched, shimmery)
+        fizzle_freqs = [1800, 2200, 2600, 3000]
+        for i, freq in enumerate(fizzle_freqs):
+            # Each frequency starts at slightly different time
+            delay = i * 0.02
+            delay_samples = int(delay * AUDIO_SAMPLE_RATE)
+            
+            # Create descending shimmer
+            freq_sweep = np.linspace(freq, freq * 0.6, sample_count)
+            phase = 2 * np.pi * np.cumsum(freq_sweep) / AUDIO_SAMPLE_RATE
+            
+            tone = np.sin(phase) * 0.25
+            # Quick decay for each sparkle
+            tone *= np.exp(-t * (12 + i * 2))
+            
+            # Apply delay
+            if delay_samples > 0 and delay_samples < sample_count:
+                tone[:delay_samples] = 0
+            
+            wave += tone
+        
+        # Add subtle filtered noise for "air escaping" quality
+        noise = np.random.normal(0, 0.15, sample_count)
+        # High-pass effect by subtracting smoothed version
+        smoothed = np.convolve(noise, np.ones(20)/20, mode='same')
+        noise = noise - smoothed * 0.8
+        noise *= np.exp(-t * 15)  # Quick decay
+        wave += noise * 0.3
+        
+        # Add a subtle mid-tone "poof"
+        poof_freq = 600
+        poof = np.sin(2 * np.pi * poof_freq * t) * np.exp(-t * 20)
+        wave += poof * 0.2
+        
+        # Apply overall envelope
+        envelope = np.exp(-t * 8)  # Smooth decay
+        wave = wave * envelope
+        
+        # Normalize and apply volume
+        wave = wave / np.max(np.abs(wave)) * 0.3
         
         # Convert to 16-bit stereo
         wave = np.clip(wave * 32767, -32768, 32767).astype(np.int16)
