@@ -64,6 +64,8 @@ class AudioManager:
             volume=0.5,
             wave_type='sine'
         )
+        
+        self.sounds['revive'] = self._generate_revive_sound()
     
     def _generate_sweep_sound(self, freq_start, freq_end, duration, volume=0.5, wave_type='sine'):
         """
@@ -190,6 +192,71 @@ class AudioManager:
         # Sharp attack, quick decay
         envelope = np.exp(-t * 30)  # Fast decay
         wave = wave * envelope * 0.4
+        
+        # Convert to 16-bit stereo
+        wave = np.clip(wave * 32767, -32768, 32767).astype(np.int16)
+        stereo_wave = np.column_stack((wave, wave))
+        
+        return pygame.sndarray.make_sound(stereo_wave)
+    
+    def _generate_revive_sound(self):
+        """
+        Generate magical revive/respawn sound effect.
+        Creates an uplifting, ethereal sound with ascending tones and sparkle.
+        
+        Returns:
+            pygame.Sound object
+        """
+        duration = 0.8  # Longer for dramatic effect
+        sample_count = int(AUDIO_SAMPLE_RATE * duration)
+        
+        t = np.linspace(0, duration, sample_count, False)
+        
+        # Main ascending sweep (magical whoosh)
+        freq_start = 200
+        freq_end = 1200
+        freq = np.linspace(freq_start, freq_end, sample_count)
+        phase = 2 * np.pi * np.cumsum(freq) / AUDIO_SAMPLE_RATE
+        
+        # Primary tone with harmonics
+        wave = np.sin(phase)
+        wave += 0.5 * np.sin(phase * 2)  # Octave harmonic
+        wave += 0.3 * np.sin(phase * 3)  # Fifth harmonic
+        
+        # Add shimmer/sparkle effect (high frequency modulation)
+        shimmer_freq = 8  # Hz - shimmer rate
+        shimmer = 1.0 + 0.3 * np.sin(2 * np.pi * shimmer_freq * t)
+        wave = wave * shimmer
+        
+        # Add bell-like tones for magical quality
+        bell_freqs = [800, 1000, 1200, 1500]
+        for bell_freq in bell_freqs:
+            bell_t_offset = np.random.uniform(0, 0.1)  # Slight timing variation
+            bell_phase = 2 * np.pi * bell_freq * (t - bell_t_offset)
+            bell_wave = np.sin(bell_phase) * np.exp(-(t - bell_t_offset) * 4)
+            bell_wave = np.where(t >= bell_t_offset, bell_wave, 0)
+            wave += bell_wave * 0.2
+        
+        # Add ethereal pad (sustained background tone)
+        pad_freq = 400
+        pad = 0.3 * np.sin(2 * np.pi * pad_freq * t)
+        pad += 0.2 * np.sin(2 * np.pi * pad_freq * 1.5 * t)
+        wave += pad
+        
+        # Apply envelope (quick attack, sustained, gentle release)
+        attack_samples = int(sample_count * 0.05)  # Quick attack
+        release_samples = int(sample_count * 0.3)  # Gentle fade out
+        
+        envelope = np.ones(sample_count)
+        if attack_samples > 0:
+            envelope[:attack_samples] = np.linspace(0, 1, attack_samples) ** 0.5
+        if release_samples > 0:
+            envelope[-release_samples:] = (np.linspace(1, 0, release_samples) ** 2)
+        
+        wave = wave * envelope
+        
+        # Normalize and apply volume
+        wave = wave / np.max(np.abs(wave)) * 0.5
         
         # Convert to 16-bit stereo
         wave = np.clip(wave * 32767, -32768, 32767).astype(np.int16)

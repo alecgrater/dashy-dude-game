@@ -52,6 +52,8 @@ class PlayState(BaseState):
         self.paused = False
         self.resume_button_rect = None
         self.menu_button_rect = None
+        self.restart_button_rect = None
+        self.gameover_menu_button_rect = None
         
         # Statistics tracking
         self.stats = {
@@ -295,6 +297,15 @@ class PlayState(BaseState):
             sound_event = self.player.land_on_platform(collision_platform)
             collision_platform.on_player_land()
             
+            # Check if triple jump was used - if so, consume the power-up
+            if self.player.triple_jump_used and self.extra_jump_active:
+                self.extra_jump_active = False
+                self.player.max_jumps = 2  # Reset to normal
+                self.player.triple_jump_used = False
+                # Remove from active power-ups
+                if CollectibleType.EXTRA_JUMP in self.active_powerups:
+                    del self.active_powerups[CollectibleType.EXTRA_JUMP]
+            
             # Apply bounce/spring effects AFTER physics resolution
             if is_bouncy:
                 # Bouncy platform - launch player higher
@@ -418,9 +429,9 @@ class PlayState(BaseState):
         if self.physics.check_water_collision(self.player, WATER_LEVEL):
             # Check if shield is active
             if self.shield_active:
-                # Shield saves the player - teleport back up
+                # Shield saves the player - teleport back up to the very top
                 self.shield_active = False
-                self.player.position.y = SCREEN_HEIGHT - 400
+                self.player.position.y = 50  # Respawn at the very top of the screen
                 self.player.velocity.y = JUMP_VELOCITY  # Give them a jump
                 
                 # Set jump state: shield rescue counts as first jump
@@ -438,8 +449,8 @@ class PlayState(BaseState):
                     is_text=True
                 )
                 
-                # Play sound
-                self.audio.play_sound('helicopter')
+                # Play revive sound
+                self.audio.play_sound('revive')
                 
                 # Emit particles
                 self.particles.emit_double_jump_boost(
@@ -502,6 +513,7 @@ class PlayState(BaseState):
                 # Deactivate power-up
                 if powerup_type == CollectibleType.MAGNET:
                     self.magnet_active = False
+                    self.player.set_magnet_active(False)
                 elif powerup_type == CollectibleType.DOUBLE_POINTS:
                     self.double_points_active = False
                 elif powerup_type == CollectibleType.EXTRA_JUMP:
@@ -510,6 +522,7 @@ class PlayState(BaseState):
                 elif powerup_type == CollectibleType.SPEED_BOOST:
                     self.speed_boost_active = False
                     self.player.base_speed = PLAYER_RUN_SPEED  # Reset to normal
+                    self.player.set_speed_boost_powerup_active(False)
             else:
                 self.active_powerups[powerup_type] = time_remaining
         
@@ -547,7 +560,8 @@ class PlayState(BaseState):
             if collectible.type == CollectibleType.SPEED_BOOST:
                 self.speed_boost_active = True
                 self.active_powerups[CollectibleType.SPEED_BOOST] = duration
-                self.player.base_speed = PLAYER_RUN_SPEED + 150  # Boost speed
+                self.player.base_speed = PLAYER_RUN_SPEED + 100  # Boost speed (500 total)
+                self.player.set_speed_boost_powerup_active(True)
                 if not self.player.speed_boost_active:  # If not already boosting from double jump
                     self.player.velocity.x = self.player.base_speed
             
@@ -558,6 +572,7 @@ class PlayState(BaseState):
             elif collectible.type == CollectibleType.MAGNET:
                 self.magnet_active = True
                 self.active_powerups[CollectibleType.MAGNET] = duration
+                self.player.set_magnet_active(True)
             
             elif collectible.type == CollectibleType.DOUBLE_POINTS:
                 self.double_points_active = True
@@ -567,6 +582,7 @@ class PlayState(BaseState):
                 self.extra_jump_active = True
                 self.active_powerups[CollectibleType.EXTRA_JUMP] = duration
                 self.player.max_jumps = 3  # Enable triple jump
+                self.player.triple_jump_used = False  # Track if triple jump has been used
             
             # Show power-up message
             self.game.ui_renderer.add_score_popup(
@@ -614,40 +630,74 @@ class PlayState(BaseState):
         screen.blit(shield_surface, (center_x - radius, center_y - radius))
     
     def _render_powerup_indicators(self, screen):
-        """Render active power-up indicators."""
-        y_offset = 100
-        x_pos = 20
+        """Render active power-up indicators centered under combo meter."""
+        # Start position under combo meter (combo is at y=60, so start at ~110)
+        base_y_offset = 110
         
-        # Create a small font for power-up text
+        # Create fonts for power-up text
         font = pygame.font.Font(None, 24)
+        large_font = pygame.font.Font(None, 42)  # Larger font for triple jump
+        
+        # Collect all power-up texts to render
+        powerup_texts = []
         
         # Shield (no timer)
         if self.shield_active:
-            text = font.render("SHIELD", True, (100, 200, 255))
-            screen.blit(text, (x_pos, y_offset))
-            y_offset += 30
+            powerup_texts.append({
+                'text': "SHIELD",
+                'color': (100, 200, 255),
+                'font': font
+            })
         
         # Timed power-ups
         for powerup_type, time_remaining in self.active_powerups.items():
             if powerup_type == CollectibleType.SPEED_BOOST:
                 color = (0, 255, 255)
                 label = "SPEED"
+                use_large_font = False
             elif powerup_type == CollectibleType.MAGNET:
                 color = (255, 0, 255)
                 label = "MAGNET"
+                use_large_font = False
             elif powerup_type == CollectibleType.DOUBLE_POINTS:
                 color = (255, 165, 0)
                 label = "2X PTS"
+                use_large_font = False
             elif powerup_type == CollectibleType.EXTRA_JUMP:
                 color = (50, 255, 50)
                 label = "3X JUMP"
+                use_large_font = True  # Make triple jump more prominent
             else:
                 continue
             
-            # Render label and timer
-            text = font.render(f"{label}: {int(time_remaining)}s", True, color)
-            screen.blit(text, (x_pos, y_offset))
-            y_offset += 30
+            display_font = large_font if use_large_font else font
+            powerup_texts.append({
+                'text': f"{label}: {int(time_remaining)}s",
+                'color': color,
+                'font': display_font
+            })
+        
+        # Render all power-ups centered
+        y_offset = base_y_offset
+        for powerup_info in powerup_texts:
+            text_surface = powerup_info['font'].render(powerup_info['text'], True, powerup_info['color'])
+            
+            # Center horizontally
+            x_pos = (screen.get_width() - text_surface.get_width()) // 2
+            
+            # Add outline for better readability
+            outline_color = (0, 0, 0)
+            for offset in [(2, 2), (-2, -2), (2, -2), (-2, 2)]:
+                outline = powerup_info['font'].render(powerup_info['text'], True, outline_color)
+                screen.blit(outline, (x_pos + offset[0], y_offset + offset[1]))
+            
+            screen.blit(text_surface, (x_pos, y_offset))
+            
+            # Adjust spacing based on font size
+            if powerup_info['font'] == large_font:
+                y_offset += 45
+            else:
+                y_offset += 30
     
     def _render_achievement_notification(self, screen):
         """Render achievement unlock notification."""
@@ -778,6 +828,12 @@ class PlayState(BaseState):
         
         # Game over message
         if self.game_over:
+            # Semi-transparent overlay
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            overlay.fill((0, 0, 0))
+            overlay.set_alpha(180)
+            screen.blit(overlay, (0, 0))
+            
             if self.is_new_high_score:
                 self.game.ui_renderer.render_title(screen, "NEW HIGH SCORE!")
             else:
@@ -787,7 +843,7 @@ class PlayState(BaseState):
             self.game.ui_renderer.render_centered_text(
                 screen,
                 f"Final Score: {self.score}",
-                SCREEN_HEIGHT // 2 + 20,
+                SCREEN_HEIGHT // 2 - 20,
                 "medium"
             )
             
@@ -798,15 +854,45 @@ class PlayState(BaseState):
                     self.game.ui_renderer.render_centered_text(
                         screen,
                         f"Rank: #{rank}",
-                        SCREEN_HEIGHT // 2 + 60,
+                        SCREEN_HEIGHT // 2 + 20,
                         "small",
                         UI_ACCENT
                     )
             
+            # Get mouse position for hover detection
+            mouse_pos = pygame.mouse.get_pos()
+            
+            # Restart button
+            button_width = 200
+            button_height = 50
+            restart_x = SCREEN_WIDTH // 2 - button_width // 2
+            restart_y = SCREEN_HEIGHT // 2 + 60
+            self.restart_button_rect = pygame.Rect(restart_x, restart_y, button_width, button_height)
+            is_restart_hovered = self.restart_button_rect.collidepoint(mouse_pos)
+            
+            self.game.ui_renderer.render_button(
+                screen, "RESTART",
+                restart_x, restart_y, button_width, button_height,
+                is_restart_hovered
+            )
+            
+            # Main Menu button
+            menu_x = SCREEN_WIDTH // 2 - button_width // 2
+            menu_y = SCREEN_HEIGHT // 2 + 130
+            self.gameover_menu_button_rect = pygame.Rect(menu_x, menu_y, button_width, button_height)
+            is_menu_hovered = self.gameover_menu_button_rect.collidepoint(mouse_pos)
+            
+            self.game.ui_renderer.render_button(
+                screen, "MAIN MENU",
+                menu_x, menu_y, button_width, button_height,
+                is_menu_hovered
+            )
+            
+            # Show space key hint
             self.game.ui_renderer.render_centered_text(
                 screen,
                 "Press SPACE to restart",
-                SCREEN_HEIGHT // 2 + 100,
+                SCREEN_HEIGHT // 2 + 200,
                 "small"
             )
         
@@ -872,8 +958,9 @@ class PlayState(BaseState):
                     # Restart game
                     self.enter()
         
-        # Handle pause menu button clicks
+        # Handle button clicks
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # Pause menu buttons
             if self.paused:
                 if self.resume_button_rect and self.resume_button_rect.collidepoint(event.pos):
                     # Resume game
@@ -882,4 +969,13 @@ class PlayState(BaseState):
                 elif self.menu_button_rect and self.menu_button_rect.collidepoint(event.pos):
                     # Return to main menu
                     self.paused = False
+                    self.game.change_state('title')
+            
+            # Game over menu buttons
+            elif self.game_over:
+                if self.restart_button_rect and self.restart_button_rect.collidepoint(event.pos):
+                    # Restart game
+                    self.enter()
+                elif self.gameover_menu_button_rect and self.gameover_menu_button_rect.collidepoint(event.pos):
+                    # Return to main menu
                     self.game.change_state('title')

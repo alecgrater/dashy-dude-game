@@ -7,65 +7,167 @@ from src.utils.constants import *
 
 
 class ScorePopup:
-    """Animated score popup that appears when landing on platforms."""
+    """Animated score popup with AAA-game-quality effects."""
     
     def __init__(self, x, y, score, combo=1, is_text=False):
         self.x = x
         self.y = y
+        self.initial_y = y
         self.score = score
         self.combo = combo
         self.is_text = is_text  # If True, score is a text string
         self.lifetime = 0.0
-        self.max_lifetime = 1.5 if is_text else 1.0  # Text lasts longer
-        self.velocity_y = -80 if is_text else -100  # Float upward
+        self.max_lifetime = 2.0 if is_text else 1.5  # Longer for better visibility
+        self.velocity_y = -120 if is_text else -150  # Faster upward movement
         self.alpha = 255
+        
+        # Enhanced animation properties
+        self.scale = 0.0  # Start from 0 for pop-in effect
+        self.rotation = 0.0
+        self.glow_intensity = 1.0
+        self.shake_x = 0.0
+        self.shake_y = 0.0
+        
+        # Particle-like trail effect
+        self.trail_positions = []
+        self.trail_max = 5
     
     def update(self, dt):
-        """Update popup animation."""
+        """Update popup animation with advanced effects."""
         self.lifetime += dt
-        self.y += self.velocity_y * dt
+        progress = self.lifetime / self.max_lifetime
         
-        # Fade out in last 30% of lifetime
-        fade_start = self.max_lifetime * 0.7
+        # Store trail positions for motion blur effect
+        if len(self.trail_positions) >= self.trail_max:
+            self.trail_positions.pop(0)
+        self.trail_positions.append((self.x, self.y, self.alpha * 0.3))
+        
+        # Movement with easing
+        if self.lifetime < 0.3:
+            # Quick pop-up phase with overshoot
+            ease_progress = self.lifetime / 0.3
+            ease_factor = 1.0 - (1.0 - ease_progress) ** 3  # Cubic ease-out
+            self.y = self.initial_y + self.velocity_y * ease_factor * 0.3
+        else:
+            # Slower float upward
+            self.y += self.velocity_y * dt * 0.5
+        
+        # Elastic pop-in scale animation
+        if self.lifetime < 0.2:
+            # Overshoot scale for impact
+            t = self.lifetime / 0.2
+            self.scale = 1.0 + 0.5 * math.sin(t * math.pi * 2) * (1.0 - t)
+            self.scale = max(0.0, min(1.5, self.scale))
+        elif self.lifetime < 0.4:
+            # Settle to normal size
+            t = (self.lifetime - 0.2) / 0.2
+            self.scale = 1.5 - 0.5 * t
+        else:
+            # Slight pulse during display
+            pulse = 1.0 + 0.05 * math.sin(self.lifetime * 10)
+            self.scale = 1.0 * pulse
+        
+        # Rotation for combo/power-up text
+        if self.is_text or self.combo > 1:
+            self.rotation = math.sin(self.lifetime * 8) * 5  # Gentle wobble
+        
+        # Glow pulse effect
+        self.glow_intensity = 0.5 + 0.5 * math.sin(self.lifetime * 12)
+        
+        # Micro shake for impact
+        if self.lifetime < 0.15:
+            shake_amount = (0.15 - self.lifetime) * 20
+            self.shake_x = (math.sin(self.lifetime * 50) * shake_amount)
+            self.shake_y = (math.cos(self.lifetime * 50) * shake_amount)
+        else:
+            self.shake_x = 0
+            self.shake_y = 0
+        
+        # Fade out in last 40% of lifetime with smooth curve
+        fade_start = self.max_lifetime * 0.6
         if self.lifetime > fade_start:
             fade_progress = (self.lifetime - fade_start) / (self.max_lifetime - fade_start)
-            self.alpha = int(255 * (1 - fade_progress))
+            # Smooth fade curve
+            fade_curve = 1.0 - fade_progress ** 2
+            self.alpha = int(255 * fade_curve)
         
         return self.lifetime < self.max_lifetime
     
     def render(self, screen, font, camera_x, camera_y):
-        """Render the popup."""
-        screen_x = self.x - camera_x
-        screen_y = self.y - camera_y
+        """Render the popup with advanced visual effects."""
+        screen_x = self.x - camera_x + self.shake_x
+        screen_y = self.y - camera_y + self.shake_y
         
-        # Scale based on lifetime (pop in effect)
-        scale = min(1.0, self.lifetime * 5)
-        
-        # Create text
+        # Determine text and colors based on type
         if self.is_text:
-            # Display text message (for power-ups)
-            text = str(self.score)
-            color = (0, 255, 255)  # Cyan for power-ups
+            # Power-up text with gradient effect
+            text = str(self.score).upper()
+            base_color = (0, 255, 255)  # Cyan
+            glow_color = (255, 255, 0)  # Yellow glow
+            font_size = 52  # Larger for power-ups
         elif self.combo > 1:
-            text = f"+{self.score} x{self.combo}!"
-            color = (255, 215, 0)  # Gold for combo
+            text = f"+{self.score} ×{self.combo}!"
+            # Color based on combo level
+            if self.combo >= 5:
+                base_color = (255, 50, 255)  # Magenta for high combos
+                glow_color = (255, 200, 0)  # Gold glow
+            else:
+                base_color = (255, 215, 0)  # Gold
+                glow_color = (255, 100, 0)  # Orange glow
+            font_size = 48 + min(self.combo * 2, 20)  # Larger for higher combos
         else:
             text = f"+{self.score}"
-            color = (255, 255, 255)
+            base_color = (255, 255, 255)  # White
+            glow_color = (200, 200, 255)  # Slight blue glow
+            font_size = 44
         
-        # Render with alpha
-        text_surface = font.render(text, True, color)
+        # Create larger font for better readability
+        display_font = pygame.font.Font(None, int(font_size * self.scale))
+        
+        # Render glow layers for depth (multiple passes)
+        glow_alpha = int(self.alpha * self.glow_intensity * 0.6)
+        for glow_offset in [8, 6, 4, 2]:
+            glow_surface = display_font.render(text, True, glow_color)
+            glow_surface.set_alpha(glow_alpha // (glow_offset // 2))
+            glow_rect = glow_surface.get_rect(center=(int(screen_x), int(screen_y)))
+            
+            # Draw glow in all directions
+            for dx, dy in [(glow_offset, 0), (-glow_offset, 0), (0, glow_offset), (0, -glow_offset),
+                          (glow_offset, glow_offset), (-glow_offset, -glow_offset),
+                          (glow_offset, -glow_offset), (-glow_offset, glow_offset)]:
+                screen.blit(glow_surface, (glow_rect.x + dx, glow_rect.y + dy))
+        
+        # Render thick black outline for readability (stroke effect)
+        outline_color = (0, 0, 0)
+        for offset in [(2, 2), (-2, -2), (2, -2), (-2, 2), (3, 0), (-3, 0), (0, 3), (0, -3)]:
+            outline_surface = display_font.render(text, True, outline_color)
+            outline_surface.set_alpha(self.alpha)
+            outline_rect = outline_surface.get_rect(center=(int(screen_x + offset[0]), int(screen_y + offset[1])))
+            screen.blit(outline_surface, outline_rect)
+        
+        # Render main text with full alpha
+        text_surface = display_font.render(text, True, base_color)
         text_surface.set_alpha(self.alpha)
         
-        # Apply scale
-        if scale < 1.0:
-            new_width = int(text_surface.get_width() * scale)
-            new_height = int(text_surface.get_height() * scale)
-            text_surface = pygame.transform.scale(text_surface, (new_width, new_height))
+        # Apply rotation if needed
+        if abs(self.rotation) > 0.1:
+            text_surface = pygame.transform.rotate(text_surface, self.rotation)
         
-        # Center text
+        # Center and draw main text
         text_rect = text_surface.get_rect(center=(int(screen_x), int(screen_y)))
         screen.blit(text_surface, text_rect)
+        
+        # Render motion trail for extra juice
+        if len(self.trail_positions) > 1:
+            for i, (tx, ty, trail_alpha) in enumerate(self.trail_positions[:-1]):
+                trail_screen_x = tx - camera_x
+                trail_screen_y = ty - camera_y
+                trail_scale = self.scale * (0.5 + 0.5 * (i / len(self.trail_positions)))
+                trail_font = pygame.font.Font(None, int(font_size * trail_scale))
+                trail_surface = trail_font.render(text, True, base_color)
+                trail_surface.set_alpha(int(trail_alpha))
+                trail_rect = trail_surface.get_rect(center=(int(trail_screen_x), int(trail_screen_y)))
+                screen.blit(trail_surface, trail_rect)
 
 
 class UIRenderer:
@@ -331,6 +433,30 @@ class UIRenderer:
             shadow = font.render(text, True, UI_TEXT_SHADOW)
             screen.blit(shadow, (x + 2, y + 2))
             screen.blit(text_surface, (x, y))
+            
+            # Render timer next to combo text
+            timer_text = f"{self.combo_timer:.1f}s"
+            timer_font_size = int(base_size * 0.7 * pulse)  # Slightly smaller than combo text
+            timer_font = pygame.font.Font(None, timer_font_size)
+            
+            # Timer color changes based on urgency
+            if self.combo_timer < 0.5:
+                timer_color = (255, 50, 50)  # Red - urgent!
+            elif self.combo_timer < 1.0:
+                timer_color = (255, 165, 0)  # Orange - warning
+            else:
+                timer_color = (100, 255, 100)  # Green - safe
+            
+            timer_surface = timer_font.render(timer_text, True, timer_color)
+            
+            # Position timer to the right of combo text with some spacing
+            timer_x = x + text_surface.get_width() + 15
+            timer_y = y + (text_surface.get_height() - timer_surface.get_height()) // 2
+            
+            # Shadow for timer
+            timer_shadow = timer_font.render(timer_text, True, UI_TEXT_SHADOW)
+            screen.blit(timer_shadow, (timer_x + 2, timer_y + 2))
+            screen.blit(timer_surface, (timer_x, timer_y))
     
     def _hsv_to_rgb(self, h, s, v):
         """Convert HSV color to RGB tuple."""

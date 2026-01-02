@@ -1,6 +1,40 @@
 {
   "scores": [
     {
+      "score": 3355,
+      "name": "Player",
+      "date": "2026-01-02T01:40:24.781880",
+      "stats": {
+        "total_jumps": 39,
+        "double_jumps": 45,
+        "helicopter_uses": 7,
+        "platforms_landed": 73,
+        "collectibles_gathered": 42,
+        "max_combo": 30,
+        "distance_traveled": 40388,
+        "play_time": 87.44999999999632,
+        "max_difficulty_reached": 2.4574999999999387,
+        "total_platforms_landed": 251
+      }
+    },
+    {
+      "score": 2745,
+      "name": "Player",
+      "date": "2026-01-02T01:37:53.760610",
+      "stats": {
+        "total_jumps": 28,
+        "double_jumps": 34,
+        "helicopter_uses": 4,
+        "platforms_landed": 56,
+        "collectibles_gathered": 61,
+        "max_combo": 27,
+        "distance_traveled": 28660,
+        "play_time": 61.49999999999779,
+        "max_difficulty_reached": 2.024999999999963,
+        "total_platforms_landed": 133
+      }
+    },
+    {
       "score": 2495,
       "name": "Player",
       "date": "2026-01-01T04:55:56.487203",
@@ -16,148 +50,122 @@
       }
     },
     {
-      "score": 985,
+      "score": 2300,
       "name": "Player",
-      "date": "2025-12-31T16:53:14.970816",
+      "date": "2026-01-02T00:49:42.359597",
       "stats": {
-        "total_jumps": 12,
-        "double_jumps": 27,
+        "total_jumps": 33,
+        "double_jumps": 43,
         "helicopter_uses": 14,
-        "platforms_landed": 29,
-        "collectibles_gathered": 11,
-        "max_combo": 9,
-        "distance_traveled": 23172,
-        "play_time": 51.99999999999833
-      }
-    },
-    {
-      "score": 900,
-      "name": "Player",
-      "date": "2026-01-01T19:50:15.503634",
-      "stats": {
-        "total_jumps": 12,
-        "double_jumps": 8,
-        "helicopter_uses": 2,
-        "platforms_landed": 12,
-        "collectibles_gathered": 4,
-        "max_combo": 12,
-        "distance_traveled": 5437,
-        "play_time": 12.466666666666866,
-        "max_difficulty_reached": 1.2077777777777812,
-        "total_platforms_landed": 203
-      }
-    },
-    {
-      "score": 870,
-      "name": "Player",
-      "date": "2026-01-01T09:10:58.024644",
-      "stats": {
-        "total_jumps": 9,
-        "double_jumps": 23,
-        "helicopter_uses": 7,
-        "platforms_landed": 15,
-        "collectibles_gathered": 65,
-        "max_combo": 6,
-        "distance_traveled": 14989,
-        "play_time": 32.38333333333278
-      }
-    },
-    {
-      "score": 865,
-      "name": "Player",
-      "date": "2025-12-31T16:50:46.242208",
-      "stats": {
-        "total_jumps": 14,
-        "double_jumps": 27,
-        "helicopter_uses": 13,
-        "platforms_landed": 20,
-        "collectibles_gathered": 54,
-        "max_combo": 5,
-        "distance_traveled": 18191,
-        "play_time": 40.08333333333234
-      }
-    },
-    {
-      "score": 855,
-      "name": "Player",
-      "date": "2026-01-01T04:53:20.170421",
-      "stats": {
-        "total_jumps": 12,
-        "double_jumps": 19,
-        "helicopter_uses": 3,
-        "platforms_landed": 18,
-        "collectibles_gathered": 24,
-        "max_combo": 18,
-        "distance_traveled": 9710,
-        "play_time": 21.06666666666675
-      }
-    },
-    {
-      "score": 855,
-      "name": "Player",
-      "date": "2026-01-01T19:46:32.401843",
-      "stats": {
-        "total_jumps": 6,
-        "double_jumps": 14,
-        "helicopter_uses": 12,
-        "platforms_landed": 15,
-        "collectibles_gathered": 45,
-        "max_combo": 9,
-        "distance_traveled": 15638,
-        "play_time": 34.51666666666599,
-        "max_difficulty_reached": 1.5752777777777665,
-        "total_platforms_landed": 52
-      }
-    },
-    {
-      "score": 845,
-      "name": "Player",
-      "date": "2026-01-01T19:49:56.421405",
-      "stats": {
-        "total_jumps": 10,
-        "double_jumps": 11,
-        "helicopter_uses": 6,
-        "platforms_landed": 16,
-        "collectibles_gathered": 13,
-        "max_combo": 16,
-        "distance_traveled": 8785,
-        "play_time": 17.68333333333361,
-        "max_difficulty_reached": 1.2947222222222268,
-        "total_platforms_landed": 188
-      }
-    },
-    {
-      "score": 810,
-      "name": "Player",
-      "date": "2026-01-01T19:50:50.531292",
-      "stats": {
-        "total_jumps": 18,
-        "double_jumps": 22,
-        "helicopter_uses": 5,
-        "platforms_landed": 23,
-        "collectibles_gathered": 36,
-        "max_combo": 13,
-        "distance_traveled": 14871,
-        "play_time": 33.1999999999994,
-        "max_difficulty_reached": 1.5533333333333235,
-        "total_platforms_landed": 226
-      }
-    },
-    {
-      "score": 740,
-      "name": "Player",
-      "date": "2026-01-01T19:51:31.849607",
-      "stats": {
-        "total_jumps": 7,
-        "double_jumps": 17,
-        "helicopter_uses": 6,
-        "platforms_landed": 20,
-        "collectibles_gathered": 13,
-        "max_combo": 11,
-        "distance_traveled": 12074,
-        "play_time": 26.94999999999975,
-        "max_difficulty_reached": 1.4491666666666625,
+        "platforms_landed": 61,
+        "collectibles_gathered": 37,
+        "max_combo": 17,
+        "distance_traveled": 36277,
+        "play_time": 80.36666666666339,
+        "max_difficulty_reached": 2.33944444444439,
         "total_platforms_landed": 246
+      }
+    },
+    {
+      "score": 2300,
+      "name": "Player",
+      "date": "2026-01-02T01:23:10.784137",
+      "stats": {
+        "total_jumps": 29,
+        "double_jumps": 33,
+        "helicopter_uses": 5,
+        "platforms_landed": 45,
+        "collectibles_gathered": 27,
+        "max_combo": 19,
+        "distance_traveled": 25572,
+        "play_time": 57.2166666666647,
+        "max_difficulty_reached": 1.9536111111110783,
+        "total_platforms_landed": 45
+      }
+    },
+    {
+      "score": 2280,
+      "name": "Player",
+      "date": "2026-01-01T21:37:12.676241",
+      "stats": {
+        "total_jumps": 25,
+        "double_jumps": 35,
+        "helicopter_uses": 14,
+        "platforms_landed": 53,
+        "collectibles_gathered": 64,
+        "max_combo": 12,
+        "distance_traveled": 34386,
+        "play_time": 74.21666666666374,
+        "max_difficulty_reached": 2.2369444444443958,
+        "total_platforms_landed": 324
+      }
+    },
+    {
+      "score": 2220,
+      "name": "Player",
+      "date": "2026-01-02T01:00:51.304416",
+      "stats": {
+        "total_jumps": 27,
+        "double_jumps": 52,
+        "helicopter_uses": 9,
+        "platforms_landed": 60,
+        "collectibles_gathered": 65,
+        "max_combo": 9,
+        "distance_traveled": 36906,
+        "play_time": 77.63333333333021,
+        "max_difficulty_reached": 2.293888888888837,
+        "total_platforms_landed": 69
+      }
+    },
+    {
+      "score": 2210,
+      "name": "Player",
+      "date": "2026-01-02T01:01:54.669078",
+      "stats": {
+        "total_jumps": 26,
+        "double_jumps": 26,
+        "helicopter_uses": 4,
+        "platforms_landed": 40,
+        "collectibles_gathered": 24,
+        "max_combo": 22,
+        "distance_traveled": 20208,
+        "play_time": 45.26666666666538,
+        "max_difficulty_reached": 1.754444444444423,
+        "total_platforms_landed": 122
+      }
+    },
+    {
+      "score": 1940,
+      "name": "Player",
+      "date": "2026-01-02T01:45:27.135076",
+      "stats": {
+        "total_jumps": 30,
+        "double_jumps": 40,
+        "helicopter_uses": 6,
+        "platforms_landed": 51,
+        "collectibles_gathered": 37,
+        "max_combo": 14,
+        "distance_traveled": 27241,
+        "play_time": 58.49999999999796,
+        "max_difficulty_reached": 1.974999999999966,
+        "total_platforms_landed": 501
+      }
+    },
+    {
+      "score": 1880,
+      "name": "Player",
+      "date": "2026-01-02T00:47:59.980808",
+      "stats": {
+        "total_jumps": 24,
+        "double_jumps": 37,
+        "helicopter_uses": 12,
+        "platforms_landed": 41,
+        "collectibles_gathered": 48,
+        "max_combo": 11,
+        "distance_traveled": 25299,
+        "play_time": 52.88333333333161,
+        "max_difficulty_reached": 1.8813888888888601,
+        "total_platforms_landed": 175
       }
     }
   ],
@@ -166,5 +174,5 @@
     "platform_theme": "grass",
     "background_theme": "forest"
   },
-  "last_updated": "2026-01-01T19:51:31.849655"
+  "last_updated": "2026-01-02T01:45:27.135129"
 }

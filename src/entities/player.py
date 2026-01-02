@@ -76,6 +76,24 @@ class Player:
         self.target_scale_x = 1.0
         self.target_scale_y = 1.0
         self.squash_speed = 15.0
+        
+        # Triple jump hat
+        self.hat_alpha = 0.0  # Alpha for hat fade effect
+        self.hat_target_alpha = 0.0
+        
+        # Magnet visual
+        self.magnet_active = False
+        self.magnet_alpha = 0.0
+        self.magnet_target_alpha = 0.0
+        
+        # Speed boost cape
+        self.speed_boost_powerup_active = False
+        self.cape_alpha = 0.0
+        self.cape_target_alpha = 0.0
+        self.cape_animation_time = 0.0
+        
+        # Triple jump tracking
+        self.triple_jump_used = False
     
     def update(self, dt, input_handler, physics_engine):
         """
@@ -152,7 +170,48 @@ class Player:
         # Update squash and stretch
         self._update_squash_stretch(dt)
         
+        # Update hat alpha (fade in when triple jump available, fade out when used)
+        if self.max_jumps > 2 and self.jump_count < 3:
+            # Triple jump available - show hat
+            self.hat_target_alpha = 255.0
+        else:
+            # No triple jump or already used - hide hat
+            self.hat_target_alpha = 0.0
+        
+        # Smooth transition for hat
+        alpha_speed = 500.0  # Alpha units per second
+        if self.hat_alpha < self.hat_target_alpha:
+            self.hat_alpha = min(self.hat_alpha + alpha_speed * dt, self.hat_target_alpha)
+        elif self.hat_alpha > self.hat_target_alpha:
+            self.hat_alpha = max(self.hat_alpha - alpha_speed * dt, self.hat_target_alpha)
+        
+        # Update magnet alpha
+        self.magnet_target_alpha = 255.0 if self.magnet_active else 0.0
+        if self.magnet_alpha < self.magnet_target_alpha:
+            self.magnet_alpha = min(self.magnet_alpha + alpha_speed * dt, self.magnet_target_alpha)
+        elif self.magnet_alpha > self.magnet_target_alpha:
+            self.magnet_alpha = max(self.magnet_alpha - alpha_speed * dt, self.magnet_target_alpha)
+        
+        # Update cape alpha
+        self.cape_target_alpha = 255.0 if self.speed_boost_powerup_active else 0.0
+        if self.cape_alpha < self.cape_target_alpha:
+            self.cape_alpha = min(self.cape_alpha + alpha_speed * dt, self.cape_target_alpha)
+        elif self.cape_alpha > self.cape_target_alpha:
+            self.cape_alpha = max(self.cape_alpha - alpha_speed * dt, self.cape_target_alpha)
+        
+        # Update cape animation time for flowing effect
+        if self.cape_alpha > 0:
+            self.cape_animation_time += dt
+        
         return sound_event
+    
+    def set_magnet_active(self, active):
+        """Set whether the magnet power-up is active."""
+        self.magnet_active = active
+    
+    def set_speed_boost_powerup_active(self, active):
+        """Set whether the speed boost power-up is active."""
+        self.speed_boost_powerup_active = active
     
     def jump(self):
         """Execute jump based on current jump count. Returns sound event name."""
@@ -194,6 +253,9 @@ class Player:
             self.state = PlayerState.DOUBLE_JUMPING
             self.jump_count = 3
             # Helicopter already enabled from double jump
+            
+            # Mark triple jump as used (will be consumed on landing)
+            self.triple_jump_used = True
             
             # Squash and stretch
             self.target_scale_x = 1.3
@@ -243,6 +305,9 @@ class Player:
         # Squash and stretch: squash on landing
         self.target_scale_x = 0.8
         self.target_scale_y = 1.2
+        
+        # Signal that triple jump was used (if it was)
+        # The play state will handle removing the power-up
         
         return 'landing'
     
@@ -333,6 +398,10 @@ class Player:
                     # Offset it down so the body aligns with the collision box
                     pos = (pos[0], pos[1] - (8 * PLAYER_SCALE))
                 
+                # Render cape BEHIND player first (so it doesn't overlap other visuals)
+                if self.cape_alpha > 0:
+                    self._render_cape(screen, pos)
+                
                 # Flip sprite if facing left
                 if not self.facing_right:
                     sprite = pygame.transform.flip(sprite, True, False)
@@ -350,6 +419,14 @@ class Player:
                     )
                 
                 screen.blit(sprite, pos)
+                
+                # Render "3X" hat ABOVE player
+                if self.hat_alpha > 0:
+                    self._render_hat(screen, pos)
+                
+                # Render magnet IN FRONT of player
+                if self.magnet_alpha > 0:
+                    self._render_magnet(screen, pos)
         else:
             # Fallback: draw colored rectangle with squash/stretch
             pos = self.get_render_position(camera)
@@ -359,5 +436,182 @@ class Player:
                 pos[0] - (width - self.width) // 2,
                 pos[1] - (height - self.height)
             )
+            
+            # Render cape BEHIND player first
+            if self.cape_alpha > 0:
+                self._render_cape(screen, adjusted_pos)
+            
             pygame.draw.rect(screen, PLAYER_PRIMARY,
                 (adjusted_pos[0], adjusted_pos[1], width, height))
+            
+            # Render "3X" hat ABOVE player
+            if self.hat_alpha > 0:
+                self._render_hat(screen, adjusted_pos)
+            
+            # Render magnet IN FRONT of player
+            if self.magnet_alpha > 0:
+                self._render_magnet(screen, adjusted_pos)
+    
+    def _render_hat(self, screen, player_pos):
+        """
+        Render the "3X" hat above the player.
+        
+        Args:
+            screen: pygame.Surface to draw on
+            player_pos: Player's current render position (x, y)
+        """
+        # Hat position (centered above player)
+        hat_x = player_pos[0] + self.width // 2
+        hat_y = player_pos[1] - 35  # Above the player (moved up for bigger hat)
+        
+        # Create hat surface with alpha (bigger size)
+        hat_size = 60
+        hat_surface = pygame.Surface((hat_size, hat_size), pygame.SRCALPHA)
+        
+        # Draw hat base (simple cap shape)
+        hat_color = (50, 255, 50, int(self.hat_alpha))
+        outline_color = (0, 0, 0, int(self.hat_alpha))
+        
+        # Hat brim (rectangle) - scaled up
+        brim_rect = pygame.Rect(8, 40, 44, 12)
+        pygame.draw.rect(hat_surface, hat_color, brim_rect, border_radius=3)
+        pygame.draw.rect(hat_surface, outline_color, brim_rect, 2, border_radius=3)
+        
+        # Hat top (rounded rectangle) - scaled up
+        top_rect = pygame.Rect(12, 12, 36, 30)
+        pygame.draw.rect(hat_surface, hat_color, top_rect, border_radius=6)
+        pygame.draw.rect(hat_surface, outline_color, top_rect, 2, border_radius=6)
+        
+        # Draw "3X" text on hat - larger font
+        font = pygame.font.Font(None, 32)
+        text_color = (255, 255, 255, int(self.hat_alpha))
+        text_surface = font.render("3X", True, (255, 255, 255))
+        
+        # Apply alpha to text
+        text_with_alpha = pygame.Surface(text_surface.get_size(), pygame.SRCALPHA)
+        text_with_alpha.fill((255, 255, 255, int(self.hat_alpha)))
+        text_with_alpha.blit(text_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+        
+        # Center text on hat
+        text_rect = text_with_alpha.get_rect(center=(hat_size // 2, 27))
+        hat_surface.blit(text_with_alpha, text_rect)
+        
+        # Blit hat to screen (centered above player)
+        screen.blit(hat_surface, (hat_x - hat_size // 2, hat_y))
+    
+    def _render_magnet(self, screen, player_pos):
+        """
+        Render the magnet sprite in front of the player.
+        
+        Args:
+            screen: pygame.Surface to draw on
+            player_pos: Player's current render position (x, y)
+        """
+        # Magnet position (in front of player, at chest level)
+        magnet_x = player_pos[0] + self.width + 5  # To the right of player
+        magnet_y = player_pos[1] + self.height // 2 - 15  # Center vertically
+        
+        # Create magnet surface with alpha
+        magnet_width = 30
+        magnet_height = 35
+        magnet_surface = pygame.Surface((magnet_width, magnet_height), pygame.SRCALPHA)
+        
+        # Magnet colors with alpha
+        red_color = (255, 50, 50, int(self.magnet_alpha))
+        blue_color = (50, 50, 255, int(self.magnet_alpha))
+        gray_color = (150, 150, 150, int(self.magnet_alpha))
+        outline_color = (0, 0, 0, int(self.magnet_alpha))
+        
+        # Draw horseshoe magnet shape
+        # Left pole (red/north)
+        left_pole = pygame.Rect(3, 5, 8, 25)
+        pygame.draw.rect(magnet_surface, red_color, left_pole, border_radius=2)
+        pygame.draw.rect(magnet_surface, outline_color, left_pole, 2, border_radius=2)
+        
+        # Right pole (blue/south)
+        right_pole = pygame.Rect(19, 5, 8, 25)
+        pygame.draw.rect(magnet_surface, blue_color, right_pole, border_radius=2)
+        pygame.draw.rect(magnet_surface, outline_color, right_pole, 2, border_radius=2)
+        
+        # Connecting bar at top
+        top_bar = pygame.Rect(3, 5, 24, 8)
+        pygame.draw.rect(magnet_surface, gray_color, top_bar, border_radius=2)
+        pygame.draw.rect(magnet_surface, outline_color, top_bar, 2, border_radius=2)
+        
+        # Add "N" and "S" labels
+        font = pygame.font.Font(None, 16)
+        
+        # North label (on red side)
+        n_text = font.render("N", True, (255, 255, 255))
+        n_with_alpha = pygame.Surface(n_text.get_size(), pygame.SRCALPHA)
+        n_with_alpha.fill((255, 255, 255, int(self.magnet_alpha)))
+        n_with_alpha.blit(n_text, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+        magnet_surface.blit(n_with_alpha, (5, 15))
+        
+        # South label (on blue side)
+        s_text = font.render("S", True, (255, 255, 255))
+        s_with_alpha = pygame.Surface(s_text.get_size(), pygame.SRCALPHA)
+        s_with_alpha.fill((255, 255, 255, int(self.magnet_alpha)))
+        s_with_alpha.blit(s_text, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+        magnet_surface.blit(s_with_alpha, (21, 15))
+        
+        # Blit magnet to screen
+        screen.blit(magnet_surface, (magnet_x, magnet_y))
+    
+    def _render_cape(self, screen, player_pos):
+        """
+        Render the flowing cape behind the player.
+        
+        Args:
+            screen: pygame.Surface to draw on
+            player_pos: Player's current render position (x, y)
+        """
+        import math
+        
+        # Cape position (behind player, attached at shoulders)
+        cape_attach_x = player_pos[0] + self.width // 2
+        cape_attach_y = player_pos[1] + 10  # Shoulder height
+        
+        # Create cape surface with alpha
+        cape_width = 35
+        cape_height = 45
+        cape_surface = pygame.Surface((cape_width, cape_height), pygame.SRCALPHA)
+        
+        # Cape colors with alpha (cyan/blue for speed)
+        cape_color = (0, 200, 255, int(self.cape_alpha))
+        cape_highlight = (100, 230, 255, int(self.cape_alpha * 0.7))
+        outline_color = (0, 0, 0, int(self.cape_alpha))
+        
+        # Create flowing cape shape with animation
+        # The cape flows behind the player based on animation time
+        wave_offset = math.sin(self.cape_animation_time * 8) * 3
+        
+        # Define cape polygon points (flowing shape)
+        cape_points = [
+            (cape_width // 2, 0),  # Top center (attachment point)
+            (cape_width // 2 - 8, 5),  # Left shoulder
+            (cape_width // 2 + 8, 5),  # Right shoulder
+            (cape_width - 5 + wave_offset, cape_height - 10),  # Right bottom
+            (cape_width // 2, cape_height + wave_offset),  # Center bottom (flows)
+            (5 - wave_offset, cape_height - 10),  # Left bottom
+        ]
+        
+        # Draw cape main body
+        pygame.draw.polygon(cape_surface, cape_color, cape_points)
+        pygame.draw.polygon(cape_surface, outline_color, cape_points, 2)
+        
+        # Add highlight stripe down the middle
+        highlight_points = [
+            (cape_width // 2 - 3, 5),
+            (cape_width // 2 + 3, 5),
+            (cape_width // 2 + 2, cape_height - 5 + wave_offset),
+            (cape_width // 2 - 2, cape_height - 5 + wave_offset),
+        ]
+        pygame.draw.polygon(cape_surface, cape_highlight, highlight_points)
+        
+        # Position cape behind player (offset to the left since it flows backward)
+        cape_x = cape_attach_x - cape_width // 2 - 15  # Behind player
+        cape_y = cape_attach_y
+        
+        # Blit cape to screen
+        screen.blit(cape_surface, (cape_x, cape_y))

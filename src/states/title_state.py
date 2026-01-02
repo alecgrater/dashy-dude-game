@@ -172,7 +172,7 @@ class TitleState(BaseState):
     def _render_play_button(self, screen):
         """Render play button with hover effect."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 + 20
+        button_y = SCREEN_HEIGHT // 2 - 80
         
         # Check if mouse is hovering
         self.play_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -200,7 +200,7 @@ class TitleState(BaseState):
     def _render_customize_button(self, screen):
         """Render customize button."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 + 90
+        button_y = SCREEN_HEIGHT // 2 - 10
         
         # Check if mouse is hovering
         self.customize_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -228,7 +228,7 @@ class TitleState(BaseState):
     def _render_achievements_button(self, screen):
         """Render achievements button."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 + 160
+        button_y = SCREEN_HEIGHT // 2 + 60
         
         # Check if mouse is hovering
         self.achievements_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -256,7 +256,7 @@ class TitleState(BaseState):
     def _render_quit_button(self, screen):
         """Render quit button."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 + 230
+        button_y = SCREEN_HEIGHT // 2 + 130
         
         # Check if mouse is hovering
         self.quit_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
