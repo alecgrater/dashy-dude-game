@@ -104,7 +104,7 @@ class AchievementSystem:
     Manages achievement tracking and persistence.
     """
     
-    def __init__(self, save_file: str = "achievements.json"):
+    def __init__(self, save_file: str = "data/achievements.json"):
         """
         Initialize achievement system.
         

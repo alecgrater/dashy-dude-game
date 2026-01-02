@@ -50,7 +50,7 @@ class SaveSystem:
     Manages persistent storage of high scores and statistics.
     """
     
-    def __init__(self, save_file: str = "high_scores.json"):
+    def __init__(self, save_file: str = "data/high_scores.json"):
         """
         Initialize save system.
         

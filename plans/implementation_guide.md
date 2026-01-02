@@ -1,4 +1,4 @@
-# Implementation Guide - Endless Lake Clone
+# Implementation Guide - Dashy Dude
 
 ## Phase-by-Phase Implementation Details
 

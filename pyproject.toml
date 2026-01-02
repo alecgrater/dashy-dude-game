@@ -1,7 +1,7 @@
 [project]
-name = "endless-lake-clone"
-version = "0.1.0"
-description = "A polished endless runner game inspired by Endless Lake with Rayman-style helicopter mechanics"
+name = "dashy-dude"
+version = "1.0.0"
+description = "A polished endless runner platformer game with helicopter glide mechanics"
 requires-python = ">=3.13.1"
 dependencies = [
     "pygame-ce>=2.4.0",

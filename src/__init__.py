@@ -1,4 +1,4 @@
 """
-Endless Lake Clone - A polished endless runner game.
+Dashy Dude - A polished endless runner platformer game.
 """
 __version__ = "0.1.0"

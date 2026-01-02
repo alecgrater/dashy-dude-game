@@ -1,7 +1,7 @@
-# Endless Lake Clone - Game Architecture Plan
+# Dashy Dude - Game Architecture Plan
 
 ## Project Overview
-A polished, modern endless runner game inspired by Endless Lake, featuring smooth pixel art graphics, responsive controls, and engaging Rayman-style helicopter mechanics.
+A polished, modern endless runner game featuring smooth pixel art graphics, responsive controls, and engaging Rayman-style helicopter mechanics.
 
 ## Technical Stack
 - **Engine**: Pygame-CE (Community Edition) - Modern, actively maintained fork
@@ -13,7 +13,7 @@ A polished, modern endless runner game inspired by Endless Lake, featuring smoot
 ## Project Structure
 
 ```
-endless-lake-clone/
+dashy-dude-game/
 ├── main.py                 # Entry point
 ├── src/
 │   ├── __init__.py
@@ -197,8 +197,8 @@ class Camera:
 ```
 ┌─────────────────────────────────────┐
 │                                     │
-│         ENDLESS LAKE                │
-│         ════════════                │
+│         DASHY DUDE                  │
+│         ══════════                  │
 │                                     │
 │         ┌─────────────┐            │
 │         │    PLAY     │            │

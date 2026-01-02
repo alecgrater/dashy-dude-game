@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple launcher script for Endless Lake Clone.
+Simple launcher script for Dashy Dude.
 Run this file to start the game.
 """
 

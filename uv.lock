@@ -3,8 +3,8 @@ revision = 2
 requires-python = ">=3.13.1"
 
 [[package]]
-name = "endless-lake-clone"
-version = "0.1.0"
+name = "dashy-dude"
+version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "numpy" },

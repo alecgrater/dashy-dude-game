@@ -1,5 +1,5 @@
 """
-Endless Lake Clone - Main entry point.
+Dashy Dude - Main entry point.
 
 A polished endless runner game with Rayman-style helicopter mechanics.
 
@@ -20,7 +20,7 @@ from src.game import Game
 def main():
     """Main entry point."""
     print("=" * 50)
-    print("ENDLESS LAKE CLONE")
+    print("DASHY DUDE")
     print("=" * 50)
     print()
     print("Controls:")

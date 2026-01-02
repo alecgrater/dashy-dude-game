@@ -1,6 +1,6 @@
-# Endless Lake Clone
+# Dashy Dude
 
-A polished endless runner game inspired by Endless Lake, featuring Rayman-style helicopter mechanics. Built with Python and Pygame-CE.
+A polished endless runner platformer game featuring helicopter glide mechanics. Built with Python and Pygame-CE.
 
 ## Quick Start
 
@@ -22,7 +22,7 @@ uv run python run_game.py
 | Key | Action |
 |-----|--------|
 | **SPACE** | Jump / Double Jump / Helicopter Glide (hold after double jump) |
-| **ESC** | Quit game |
+| **ESC** | Pause / Quit game |
 
 ## Gameplay
 
@@ -39,7 +39,25 @@ uv run python run_game.py
 - **Static** (green): Standard platforms of various widths
 - **Moving** (purple): Oscillate horizontally
 - **Small** (yellow): Narrow platforms for extra challenge
-- **Crumbling** (red): Disappear after landing (appear after 30 seconds)
+- **Bouncy** (cyan): Launch you higher when landing
+- **Spring** (pink): Super bounce platforms
+- **Ice** (light blue): Slippery surface
+- **Conveyor** (orange): Move you in a direction
+- **Crumbling** (red): Disappear after landing
+- **Disappearing**: Fade in and out periodically
+
+### Collectibles & Power-ups
+- **Coins**: Collect for points
+- **Speed Boost**: Temporary speed increase
+- **Shield**: Protection from one hazard
+- **Magnet**: Attract nearby collectibles
+- **Double Points**: 2x score multiplier
+- **Extra Jump**: Additional jump ability
+
+### Combo System
+- Land on consecutive platforms to build combos
+- Higher combos = higher score multipliers (up to 5x)
+- Combo timer resets if you don't land within 2 seconds
 
 ### Difficulty Progression
 - Game speed increases every 10 seconds
@@ -55,6 +73,18 @@ uv run python run_game.py
 - Parallax scrolling background with animated water
 - Screen shake effects on landing and death
 - Multiple animation states (idle, running, jumping, helicopter)
+- Particle effects for jumps, landings, and power-ups
+- Customizable player, platform, and background themes
+
+### Audio
+- Procedurally generated sound effects
+- Background music
+- Combo sound effects with pitch scaling
+
+### Progression
+- High score tracking with persistent saves
+- Achievement system with 10 unlockable achievements
+- Theme unlocks based on high scores
 
 ### Technical
 - **Engine**: Pygame-CE (Community Edition)
@@ -66,11 +96,11 @@ uv run python run_game.py
 
 ```
 src/
-├── entities/       # Player and platform entities
-├── systems/        # Physics, camera, input, animation
-├── graphics/       # Sprite generation, UI, background
-├── world/          # Platform generation, difficulty scaling
-├── states/         # Game state management
+├── entities/       # Player, platform, and collectible entities
+├── systems/        # Physics, camera, input, animation, audio, achievements
+├── graphics/       # Sprite generation, UI, background, particles
+├── world/          # Platform generation, collectible spawning, difficulty scaling
+├── states/         # Game state management (title, play, settings, etc.)
 └── utils/          # Constants, math utilities
 ```
 
@@ -80,6 +110,8 @@ src/
 - **Animation System**: Frame-based sprite animation with state machine
 - **Platform Generator**: Procedural generation with object pooling
 - **Difficulty Manager**: Progressive difficulty scaling over time
+- **Achievement System**: Track and unlock achievements
+- **Save System**: Persistent high scores and customization preferences
 
 ## Documentation
 
@@ -88,12 +120,6 @@ See the [`plans/`](plans/) directory for detailed architecture documentation:
 - [`system_diagram.md`](plans/system_diagram.md) - Visual architecture diagrams
 - [`implementation_guide.md`](plans/implementation_guide.md) - Implementation details
 - [`quick_reference.md`](plans/quick_reference.md) - Quick reference guide
-
-## Credits
-
-- Inspired by **Endless Lake** by Vivid Games S.A.
-- Helicopter mechanics inspired by **Rayman** series
-- Built with **Pygame-CE** (Community Edition)
 
 ## License
 

@@ -1,4 +1,4 @@
-# Quick Reference Guide - Endless Lake Clone
+# Quick Reference Guide - Dashy Dude
 
 ## Project Summary
 
@@ -59,7 +59,7 @@
 ## File Structure
 
 ```
-endless-lake-clone/
+dashy-dude-game/
 ├── main.py                          # Entry point
 ├── src/
 │   ├── game.py                      # Main game loop

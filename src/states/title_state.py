@@ -153,7 +153,7 @@ class TitleState(BaseState):
     def _render_title(self, screen):
         """Render animated game title."""
         # Title text with animation
-        title_text = "ENDLESS LAKE"
+        title_text = "DASHY DUDE"
         
         # Calculate position with bounce
         base_y = SCREEN_HEIGHT // 4
