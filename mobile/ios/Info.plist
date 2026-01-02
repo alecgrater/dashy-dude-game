@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Bundle Information -->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>Dashy Dude</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    
+    <!-- iOS Specific -->
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>MinimumOSVersion</key>
+    <string>13.0</string>
+    
+    <!-- Device Capabilities -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+        <string>gamekit</string>
+    </array>
+    
+    <!-- Orientation -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    
+    <!-- Status Bar -->
+    <key>UIStatusBarHidden</key>
+    <true/>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
+    
+    <!-- Launch Screen -->
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    
+    <!-- App Icons -->
+    <key>CFBundleIcons</key>
+    <dict>
+        <key>CFBundlePrimaryIcon</key>
+        <dict>
+            <key>CFBundleIconFiles</key>
+            <array>
+                <string>AppIcon</string>
+            </array>
+            <key>UIPrerenderedIcon</key>
+            <false/>
+        </dict>
+    </dict>
+    
+    <!-- Background Modes (for audio) -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+    
+    <!-- Privacy Descriptions -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This app does not use the microphone.</string>
+    
+    <!-- Game Center -->
+    <key>GKSupportsGameCenterDashboard</key>
+    <true/>
+    
+    <!-- App Transport Security -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+    </dict>
+    
+    <!-- Requires Full Screen -->
+    <key>UIRequiresFullScreen</key>
+    <true/>
+    
+    <!-- Home Indicator Auto-Hidden -->
+    <key>UIHomeIndicatorAutoHidden</key>
+    <true/>
+    
+    <!-- Preferred Screen Edge Deferring System Gestures -->
+    <key>UIPreferredScreenEdgesDeferringSystemGestures</key>
+    <array>
+        <string>UIRectEdgeBottom</string>
+    </array>
+</dict>
+</plist>

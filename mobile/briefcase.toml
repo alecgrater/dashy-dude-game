@@ -1,0 +1,76 @@
+# Briefcase configuration for Dashy Dude
+# BeeWare's Briefcase is an alternative to kivy-ios for building iOS apps
+
+[tool.briefcase]
+project_name = "Dashy Dude"
+bundle = "com.dashydude"
+version = "1.0.0"
+url = "https://github.com/yourusername/dashy-dude"
+license = "MIT"
+author = "Your Name"
+author_email = "your.email@example.com"
+
+[tool.briefcase.app.dashydude]
+formal_name = "Dashy Dude"
+description = "A polished endless runner platformer game with helicopter glide mechanics"
+long_description = """
+Dashy Dude is an exciting endless runner game featuring:
+- Single jump, double jump, and helicopter glide mechanics
+- Procedurally generated platforms with increasing difficulty
+- Smooth camera following with screen shake effects
+- Modern pixel art graphics
+- Responsive touch controls optimized for mobile
+"""
+icon = "mobile/assets/icons/icon"
+sources = [
+    "src",
+    "main.py",
+    "assets",
+    "data",
+]
+requires = [
+    "pygame-ce>=2.4.0",
+    "numpy>=1.26.0",
+]
+
+[tool.briefcase.app.dashydude.macOS]
+requires = []
+
+[tool.briefcase.app.dashydude.linux]
+requires = []
+system_requires = []
+
+[tool.briefcase.app.dashydude.windows]
+requires = []
+
+[tool.briefcase.app.dashydude.iOS]
+requires = []
+supported = true
+
+# iOS-specific settings
+[tool.briefcase.app.dashydude.iOS.info]
+# Supported interface orientations (landscape only for this game)
+UISupportedInterfaceOrientations = [
+    "UIInterfaceOrientationLandscapeLeft",
+    "UIInterfaceOrientationLandscapeRight",
+]
+# Hide status bar
+UIStatusBarHidden = true
+# Require full screen
+UIRequiresFullScreen = true
+# Minimum iOS version
+MinimumOSVersion = "13.0"
+# Background audio
+UIBackgroundModes = ["audio"]
+
+[tool.briefcase.app.dashydude.android]
+requires = []
+supported = false  # Android support can be added later
+
+# Build settings
+[tool.briefcase.app.dashydude.iOS.build]
+# Code signing identity (set to your Apple Developer identity)
+# identity = "Apple Development: Your Name (XXXXXXXXXX)"
+
+# Provisioning profile (set to your provisioning profile)
+# provisioning_profile = "path/to/profile.mobileprovision"
