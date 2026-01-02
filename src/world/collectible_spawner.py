@@ -39,6 +39,10 @@ class CollectibleSpawner:
         self.max_active_collectibles = 40  # Hard limit on active collectibles
         self.max_visible_collectibles = 30  # Limit visible on screen at once
         
+        # Power-up limiting: only 1 non-coin power-up visible at a time
+        self.active_powerup_type = None  # Currently active non-coin type
+        self.has_active_powerup = False  # Whether a non-coin power-up exists
+        
         # Difficulty scaling
         self.difficulty_multiplier = 1.0
     
@@ -63,6 +67,9 @@ class CollectibleSpawner:
             elif not collectible.alive:
                 self.collectibles.remove(collectible)
         
+        # Update power-up tracking
+        self._update_powerup_tracking()
+        
         # Check if we're at the collectible limit
         active_count = sum(1 for c in self.collectibles if not c.collected)
         if active_count >= self.max_active_collectibles:
@@ -86,9 +93,24 @@ class CollectibleSpawner:
                 if random.random() < self.coin_spawn_chance * self.difficulty_multiplier:
                     self._spawn_collectible_above_platform(platform, prefer_coin=True)
                 elif random.random() < self.powerup_spawn_chance * self.difficulty_multiplier:
-                    self._spawn_collectible_above_platform(platform, prefer_coin=False)
+                    # Only spawn power-up if we don't already have one active
+                    if not self.has_active_powerup:
+                        self._spawn_collectible_above_platform(platform, prefer_coin=False)
                 
                 self.last_spawn_x = platform.position.x
+    
+    def _update_powerup_tracking(self):
+        """Update tracking of active non-coin power-ups."""
+        # Check if any non-coin power-ups exist
+        non_coin_collectibles = [c for c in self.collectibles
+                                 if not c.collected and c.type != CollectibleType.COIN]
+        
+        if non_coin_collectibles:
+            self.has_active_powerup = True
+            self.active_powerup_type = non_coin_collectibles[0].type
+        else:
+            self.has_active_powerup = False
+            self.active_powerup_type = None
     
     def _spawn_collectible_above_platform(self, platform, prefer_coin=True):
         """
@@ -103,6 +125,10 @@ class CollectibleSpawner:
             collectible_type = self._get_random_collectible_type(coin_bias=True)
         else:
             collectible_type = self._get_random_collectible_type(coin_bias=False)
+            
+            # If it's not a coin and we already have a power-up, don't spawn
+            if collectible_type != CollectibleType.COIN and self.has_active_powerup:
+                return
         
         # Position above platform center
         x = platform.position.x + platform.width / 2
@@ -115,6 +141,11 @@ class CollectibleSpawner:
         # Create collectible
         collectible = Collectible(x, y, collectible_type)
         self.collectibles.append(collectible)
+        
+        # Update power-up tracking if this is a non-coin
+        if collectible_type != CollectibleType.COIN:
+            self.has_active_powerup = True
+            self.active_powerup_type = collectible_type
     
     def _get_random_collectible_type(self, coin_bias=False):
         """
