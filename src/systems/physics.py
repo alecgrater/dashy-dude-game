@@ -61,6 +61,9 @@ class PhysicsEngine:
         if player.velocity.y <= 0:
             return None
         
+        # Add horizontal tolerance for helicopter mode to make landing more forgiving
+        helicopter_tolerance = 12 if player.helicopter_active else 0
+        
         for platform in platforms:
             if not platform.active:
                 continue
@@ -68,8 +71,9 @@ class PhysicsEngine:
             platform_rect = platform.get_rect()
             
             # Check horizontal overlap first (more efficient)
-            if not (player_rect.right > platform_rect.left and
-                    player_rect.left < platform_rect.right):
+            # Expand player rect horizontally when in helicopter mode for more forgiving landing
+            if not (player_rect.right + helicopter_tolerance > platform_rect.left and
+                    player_rect.left - helicopter_tolerance < platform_rect.right):
                 continue
             
             # Calculate where player was last frame (approximately)

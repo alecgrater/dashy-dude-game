@@ -74,6 +74,9 @@ class PlayState(BaseState):
         self.notification_timer = 0.0
         self.notification_duration = 4.0  # Show each notification for 4 seconds
         
+        # Track previous multiplier for sound effects
+        self.previous_multiplier = 1
+        
         # Power-up states
         self.active_powerups = {}  # {CollectibleType: time_remaining}
         self.shield_active = False
@@ -154,6 +157,9 @@ class PlayState(BaseState):
         # Clear achievement notifications
         self.achievement_notifications.clear()
         self.notification_timer = 0.0
+        
+        # Reset multiplier tracker
+        self.previous_multiplier = 1
         
         # Reset power-ups
         self.active_powerups.clear()
@@ -360,6 +366,11 @@ class PlayState(BaseState):
             self.game.ui_renderer.add_combo()
             combo_multiplier = self.game.ui_renderer.get_combo_multiplier()
             
+            # Play ZING sound when multiplier increases
+            if combo_multiplier > self.previous_multiplier:
+                self.audio.play_multiplier_sound(combo_multiplier)
+                self.previous_multiplier = combo_multiplier
+            
             # Track max combo
             if self.game.ui_renderer.combo_count > self.stats['max_combo']:
                 self.stats['max_combo'] = self.game.ui_renderer.combo_count
@@ -467,6 +478,9 @@ class PlayState(BaseState):
                 # Stop helicopter sound if playing
                 self.audio.stop_sound('helicopter')
                 
+                # Stop rocket sound if playing
+                self.audio.stop_sound('rocket')
+                
                 sound_event = self.player.die()
                 if sound_event:
                     self.audio.play_sound(sound_event)
@@ -485,6 +499,7 @@ class PlayState(BaseState):
                 # Reset combo on death
                 self.game.ui_renderer.combo_count = 0
                 self.game.ui_renderer.combo_timer = 0.0
+                self.previous_multiplier = 1  # Reset multiplier tracker
                 
                 # Check and save high score
                 self._handle_game_over()
@@ -523,6 +538,8 @@ class PlayState(BaseState):
                     self.speed_boost_active = False
                     self.player.base_speed = PLAYER_RUN_SPEED  # Reset to normal
                     self.player.set_speed_boost_powerup_active(False)
+                    # Stop rocket sound
+                    self.audio.stop_sound('rocket')
             else:
                 self.active_powerups[powerup_type] = time_remaining
         
@@ -564,6 +581,8 @@ class PlayState(BaseState):
                 self.player.set_speed_boost_powerup_active(True)
                 if not self.player.speed_boost_active:  # If not already boosting from double jump
                     self.player.velocity.x = self.player.base_speed
+                # Start rocket sound loop
+                self.audio.play_sound('rocket', loop=True)
             
             elif collectible.type == CollectibleType.SHIELD:
                 self.shield_active = True
@@ -612,22 +631,51 @@ class PlayState(BaseState):
                 print(f"New High Score! Rank #{rank}")
     
     def _render_shield_effect(self, screen):
-        """Render shield visual effect around player."""
+        """Render shield visual effect around player with glow and prominent outline."""
         # Get player screen position
         screen_pos = self.camera.world_to_screen(self.player.position)
         center_x = int(screen_pos.x + self.player.width / 2)
         center_y = int(screen_pos.y + self.player.height / 2)
         
-        # Draw pulsing shield circle
+        # Draw pulsing shield circle with enhanced glow
         import math
         pulse = abs(math.sin(pygame.time.get_ticks() * 0.005)) * 0.3 + 0.7
-        radius = int((self.player.width * 0.8) * pulse)
+        base_radius = int(self.player.width * 0.8)
+        radius = int(base_radius * pulse)
         
-        # Draw shield with transparency
-        shield_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-        shield_color = (100, 200, 255, int(100 * pulse))
-        pygame.draw.circle(shield_surface, shield_color, (radius, radius), radius, 3)
-        screen.blit(shield_surface, (center_x - radius, center_y - radius))
+        # Create larger surface to accommodate glow
+        glow_padding = 30
+        surface_size = (radius * 2 + glow_padding * 2, radius * 2 + glow_padding * 2)
+        shield_surface = pygame.Surface(surface_size, pygame.SRCALPHA)
+        surface_center = (radius + glow_padding, radius + glow_padding)
+        
+        # Draw multiple glow layers (outer to inner)
+        # Outer glow (largest, most transparent)
+        glow_color_outer = (100, 200, 255, int(30 * pulse))
+        pygame.draw.circle(shield_surface, glow_color_outer, surface_center, radius + 20, 0)
+        
+        # Mid-outer glow
+        glow_color_mid_outer = (100, 200, 255, int(50 * pulse))
+        pygame.draw.circle(shield_surface, glow_color_mid_outer, surface_center, radius + 15, 0)
+        
+        # Mid glow
+        glow_color_mid = (120, 210, 255, int(70 * pulse))
+        pygame.draw.circle(shield_surface, glow_color_mid, surface_center, radius + 10, 0)
+        
+        # Inner glow (brightest)
+        glow_color_inner = (150, 230, 255, int(100 * pulse))
+        pygame.draw.circle(shield_surface, glow_color_inner, surface_center, radius + 5, 0)
+        
+        # Draw main shield circle with thick outline
+        shield_color = (100, 200, 255, int(120 * pulse))
+        pygame.draw.circle(shield_surface, shield_color, surface_center, radius, 8)
+        
+        # Draw bright inner rim for extra visibility
+        inner_rim_color = (180, 240, 255, int(150 * pulse))
+        pygame.draw.circle(shield_surface, inner_rim_color, surface_center, radius - 4, 3)
+        
+        # Blit shield to screen (adjust position for glow padding)
+        screen.blit(shield_surface, (center_x - radius - glow_padding, center_y - radius - glow_padding))
     
     def _render_powerup_indicators(self, screen):
         """Render active power-up indicators centered under combo meter."""

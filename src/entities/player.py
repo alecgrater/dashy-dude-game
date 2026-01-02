@@ -249,7 +249,7 @@ class Player:
         
         elif self.jump_count == 2 and self.max_jumps > 2:
             # Triple jump (only available with extra jump power-up)
-            self.velocity.y = DOUBLE_JUMP_VELOCITY
+            self.velocity.y = TRIPLE_JUMP_VELOCITY  # Significantly higher jump!
             self.state = PlayerState.DOUBLE_JUMPING
             self.jump_count = 3
             # Helicopter already enabled from double jump
@@ -257,9 +257,9 @@ class Player:
             # Mark triple jump as used (will be consumed on landing)
             self.triple_jump_used = True
             
-            # Squash and stretch
-            self.target_scale_x = 1.3
-            self.target_scale_y = 0.7
+            # Squash and stretch - more dramatic for the powerful triple jump
+            self.target_scale_x = 1.4
+            self.target_scale_y = 0.6
             
             return 'double_jump'
         
@@ -398,7 +398,7 @@ class Player:
                     # Offset it down so the body aligns with the collision box
                     pos = (pos[0], pos[1] - (8 * PLAYER_SCALE))
                 
-                # Render cape BEHIND player first (so it doesn't overlap other visuals)
+                # Render speed lines BEHIND player first (so they don't overlap other visuals)
                 if self.cape_alpha > 0:
                     self._render_cape(screen, pos)
                 
@@ -437,7 +437,7 @@ class Player:
                 pos[1] - (height - self.height)
             )
             
-            # Render cape BEHIND player first
+            # Render speed lines BEHIND player first
             if self.cape_alpha > 0:
                 self._render_cape(screen, adjusted_pos)
             
@@ -560,7 +560,7 @@ class Player:
     
     def _render_cape(self, screen, player_pos):
         """
-        Render the flowing cape behind the player.
+        Render horizontal blue speed lines behind the player with glow effect.
         
         Args:
             screen: pygame.Surface to draw on
@@ -568,50 +568,72 @@ class Player:
         """
         import math
         
-        # Cape position (behind player, attached at shoulders)
-        cape_attach_x = player_pos[0] + self.width // 2
-        cape_attach_y = player_pos[1] + 10  # Shoulder height
+        # Speed lines configuration
+        num_lines = 4
+        line_spacing = 12  # Vertical spacing between lines
+        line_length_base = 40  # Base length of lines
+        line_thickness = 6  # Thicker lines
         
-        # Create cape surface with alpha
-        cape_width = 35
-        cape_height = 45
-        cape_surface = pygame.Surface((cape_width, cape_height), pygame.SRCALPHA)
+        # Starting position (behind player, centered vertically)
+        start_x = player_pos[0] - 10  # Behind the player
+        start_y = player_pos[1] + self.height // 2 - (num_lines * line_spacing) // 2
         
-        # Cape colors with alpha (cyan/blue for speed)
-        cape_color = (0, 200, 255, int(self.cape_alpha))
-        cape_highlight = (100, 230, 255, int(self.cape_alpha * 0.7))
-        outline_color = (0, 0, 0, int(self.cape_alpha))
+        # Animate lines moving backward
+        animation_offset = (self.cape_animation_time * 200) % 30  # Cycle every 30 pixels
         
-        # Create flowing cape shape with animation
-        # The cape flows behind the player based on animation time
-        wave_offset = math.sin(self.cape_animation_time * 8) * 3
-        
-        # Define cape polygon points (flowing shape)
-        cape_points = [
-            (cape_width // 2, 0),  # Top center (attachment point)
-            (cape_width // 2 - 8, 5),  # Left shoulder
-            (cape_width // 2 + 8, 5),  # Right shoulder
-            (cape_width - 5 + wave_offset, cape_height - 10),  # Right bottom
-            (cape_width // 2, cape_height + wave_offset),  # Center bottom (flows)
-            (5 - wave_offset, cape_height - 10),  # Left bottom
-        ]
-        
-        # Draw cape main body
-        pygame.draw.polygon(cape_surface, cape_color, cape_points)
-        pygame.draw.polygon(cape_surface, outline_color, cape_points, 2)
-        
-        # Add highlight stripe down the middle
-        highlight_points = [
-            (cape_width // 2 - 3, 5),
-            (cape_width // 2 + 3, 5),
-            (cape_width // 2 + 2, cape_height - 5 + wave_offset),
-            (cape_width // 2 - 2, cape_height - 5 + wave_offset),
-        ]
-        pygame.draw.polygon(cape_surface, cape_highlight, highlight_points)
-        
-        # Position cape behind player (offset to the left since it flows backward)
-        cape_x = cape_attach_x - cape_width // 2 - 15  # Behind player
-        cape_y = cape_attach_y
-        
-        # Blit cape to screen
-        screen.blit(cape_surface, (cape_x, cape_y))
+        # Draw multiple horizontal lines
+        for i in range(num_lines):
+            # Calculate line position
+            line_y = start_y + i * line_spacing
+            
+            # Vary line length slightly for visual interest
+            length_variation = math.sin(self.cape_animation_time * 5 + i) * 5
+            line_length = line_length_base + length_variation
+            
+            # Offset each line differently for staggered animation
+            offset = (animation_offset + i * 10) % 30
+            line_x = start_x - offset
+            
+            # Calculate alpha based on position (fade out as they move back)
+            fade_factor = 1.0 - (offset / 30.0)
+            line_alpha = int(self.cape_alpha * fade_factor)
+            
+            if line_alpha > 0:
+                # Create line surface with extra space for glow
+                glow_padding = 6
+                line_surface = pygame.Surface(
+                    (int(line_length) + glow_padding * 2, line_thickness + glow_padding * 2),
+                    pygame.SRCALPHA
+                )
+                
+                # Draw glow layers (multiple layers for stronger glow effect)
+                glow_color_outer = (0, 150, 255, int(line_alpha * 0.3))
+                glow_color_mid = (50, 180, 255, int(line_alpha * 0.5))
+                glow_color_inner = (100, 210, 255, int(line_alpha * 0.7))
+                
+                # Outer glow (largest)
+                pygame.draw.rect(line_surface, glow_color_outer,
+                    (2, 2, int(line_length) + 8, line_thickness + 8), border_radius=3)
+                
+                # Mid glow
+                pygame.draw.rect(line_surface, glow_color_mid,
+                    (3, 3, int(line_length) + 6, line_thickness + 6), border_radius=2)
+                
+                # Inner glow
+                pygame.draw.rect(line_surface, glow_color_inner,
+                    (4, 4, int(line_length) + 4, line_thickness + 4), border_radius=2)
+                
+                # Black outline
+                outline_color = (0, 0, 0, line_alpha)
+                pygame.draw.rect(line_surface, outline_color,
+                    (glow_padding - 1, glow_padding - 1, int(line_length) + 2, line_thickness + 2),
+                    width=2, border_radius=2)
+                
+                # Main blue speed line (bright cyan/blue for speed)
+                line_color = (0, 220, 255, line_alpha)
+                pygame.draw.rect(line_surface, line_color,
+                    (glow_padding, glow_padding, int(line_length), line_thickness),
+                    border_radius=2)
+                
+                # Blit line to screen (adjust position for glow padding)
+                screen.blit(line_surface, (int(line_x) - glow_padding, int(line_y) - glow_padding))

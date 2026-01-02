@@ -416,7 +416,7 @@ class UIRenderer:
             multiplier = self.get_combo_multiplier()
             text = f"COMBO x{multiplier} ({self.combo_count})"
             
-            # Larger font for higher combos
+            # Larger font for higher combos (moderate increase)
             base_size = BUTTON_FONT_SIZE
             if self.combo_count >= 10:
                 base_size = int(BUTTON_FONT_SIZE * 1.3)
@@ -429,14 +429,14 @@ class UIRenderer:
             x = (screen.get_width() - text_surface.get_width()) // 2
             y = UI_PADDING + 60
             
-            # Shadow
+            # Shadow for combo text
             shadow = font.render(text, True, UI_TEXT_SHADOW)
             screen.blit(shadow, (x + 2, y + 2))
             screen.blit(text_surface, (x, y))
             
-            # Render timer next to combo text
+            # Render timer text with bigger font
             timer_text = f"{self.combo_timer:.1f}s"
-            timer_font_size = int(base_size * 0.7 * pulse)  # Slightly smaller than combo text
+            timer_font_size = int(base_size * 1.2 * pulse)  # Bigger timer text
             timer_font = pygame.font.Font(None, timer_font_size)
             
             # Timer color changes based on urgency
@@ -450,13 +450,61 @@ class UIRenderer:
             timer_surface = timer_font.render(timer_text, True, timer_color)
             
             # Position timer to the right of combo text with some spacing
-            timer_x = x + text_surface.get_width() + 15
+            timer_x = x + text_surface.get_width() + 20
             timer_y = y + (text_surface.get_height() - timer_surface.get_height()) // 2
             
+            # Calculate bubble dimensions to fit only the timer
+            bubble_padding = 20
+            bubble_width = timer_surface.get_width() + bubble_padding * 2
+            bubble_height = timer_surface.get_height() + bubble_padding * 2
+            bubble_x = timer_x - bubble_padding
+            bubble_y = timer_y - bubble_padding
+            
+            # Draw comic-style speech bubble background behind timer only
+            self._draw_comic_bubble(screen, bubble_x, bubble_y, bubble_width, bubble_height, pulse)
+            
             # Shadow for timer
-            timer_shadow = timer_font.render(timer_text, True, UI_TEXT_SHADOW)
+            timer_shadow = timer_font.render(timer_text, True, (0, 0, 0))
             screen.blit(timer_shadow, (timer_x + 2, timer_y + 2))
             screen.blit(timer_surface, (timer_x, timer_y))
+    
+    def _draw_comic_bubble(self, screen, x, y, width, height, pulse=1.0):
+        """Draw a comic-style speech bubble background."""
+        # Main bubble colors
+        bubble_fill = (135, 206, 250)  # Sky blue
+        bubble_outline = (0, 0, 0)  # Black outline
+        
+        # Create a surface for the bubble with alpha
+        bubble_surface = pygame.Surface((int(width + 80), int(height + 80)), pygame.SRCALPHA)
+        
+        # Center point for drawing on the surface
+        center_x = 40
+        center_y = 40
+        
+        # Draw simple circle
+        radius = min(width, height) * 0.5 * pulse
+        circle_center = (int(center_x + width / 2), int(center_y + height / 2))
+        
+        # Draw filled circle
+        pygame.draw.circle(bubble_surface, bubble_fill, circle_center, int(radius))
+        
+        # Draw thick black outline
+        pygame.draw.circle(bubble_surface, bubble_outline, circle_center, int(radius), 4)
+        
+        # Add halftone dots pattern for comic effect
+        dot_spacing = 10
+        dot_radius = 2
+        for dx in range(0, int(width), dot_spacing):
+            for dy in range(0, int(height), dot_spacing):
+                dot_x = center_x + width * 0.25 + dx
+                dot_y = center_y + height * 0.25 + dy
+                # Check if point is inside the bubble
+                dist_to_center = math.sqrt((dot_x - circle_center[0])**2 + (dot_y - circle_center[1])**2)
+                if dist_to_center < radius * 0.7:
+                    pygame.draw.circle(bubble_surface, (100, 180, 230), (int(dot_x), int(dot_y)), dot_radius)
+        
+        # Blit the bubble surface to the screen
+        screen.blit(bubble_surface, (x - 40, y - 40))
     
     def _hsv_to_rgb(self, h, s, v):
         """Convert HSV color to RGB tuple."""

@@ -66,6 +66,96 @@ class AudioManager:
         )
         
         self.sounds['revive'] = self._generate_revive_sound()
+        
+        self.sounds['rocket'] = self._generate_rocket_sound()
+        
+        # Generate multiplier ZING sounds (x2 through x10+)
+        for multiplier in range(2, 11):
+            self.sounds[f'multiplier_{multiplier}'] = self._generate_multiplier_zing(multiplier)
+    
+    def _generate_multiplier_zing(self, multiplier):
+        """
+        Generate exciting DUN! sound for multiplier increases.
+        Similar to Valorant kill sound - sharp, punchy, satisfying impact.
+        Pitch and excitement increase with multiplier level.
+        
+        Args:
+            multiplier: The multiplier level (2, 3, 4, 5, etc.)
+        
+        Returns:
+            pygame.Sound object
+        """
+        # Base parameters that scale with multiplier
+        base_freq = 600  # Lower starting frequency for more punch
+        freq_multiplier = 1.0 + (multiplier - 2) * 0.18  # Increase pitch by 18% per level
+        
+        duration = 0.18  # Shorter, punchier sound
+        sample_count = int(AUDIO_SAMPLE_RATE * duration)
+        t = np.linspace(0, duration, sample_count, False)
+        
+        # IMPACT LAYER - Deep punch like Valorant
+        impact_freq = 80 * freq_multiplier  # Deep bass hit
+        impact_phase = 2 * np.pi * impact_freq * t
+        impact = np.sin(impact_phase) * np.exp(-t * 25)  # Very fast decay
+        
+        # Main tone - sharp descending pitch bend for "DUN" effect
+        freq_start = base_freq * freq_multiplier * 1.8
+        freq_end = base_freq * freq_multiplier * 0.9  # Descend for punch
+        freq = np.linspace(freq_start, freq_end, sample_count)
+        phase = 2 * np.pi * np.cumsum(freq) / AUDIO_SAMPLE_RATE
+        
+        # Primary tone - square wave for aggressive sound
+        main_wave = np.sign(np.sin(phase))
+        # Soften with sine for less harsh
+        main_wave = main_wave * 0.6 + np.sin(phase) * 0.4
+        
+        # Add powerful harmonics
+        main_wave += 0.7 * np.sin(phase * 2)  # Strong octave
+        main_wave += 0.5 * np.sin(phase * 3)  # Fifth
+        main_wave += 0.3 * np.sin(phase * 4)  # Double octave
+        
+        # High frequency "crack" for sharpness
+        crack_freq = freq_start * 3
+        crack_phase = 2 * np.pi * crack_freq * t
+        crack = 0.4 * np.sin(crack_phase) * np.exp(-t * 35)  # Very sharp decay
+        
+        # Metallic ring that increases with multiplier
+        ring_freq = 1200 * freq_multiplier
+        ring_phase = 2 * np.pi * ring_freq * t
+        ring = 0.3 * np.sin(ring_phase) * np.exp(-t * 15)
+        
+        # Add noise burst for extra impact
+        noise = np.random.normal(0, 0.15, sample_count)
+        noise = noise * np.exp(-t * 40)  # Very quick noise burst
+        
+        # Combine all layers
+        wave = impact * 1.2 + main_wave * 0.8 + crack * 0.6 + ring * 0.5 + noise * 0.3
+        
+        # CRITICAL: Instant attack, sharp decay envelope
+        attack_samples = int(sample_count * 0.005)  # Nearly instant (0.5%)
+        
+        envelope = np.ones(sample_count)
+        
+        # Instant attack
+        if attack_samples > 0:
+            envelope[:attack_samples] = np.linspace(0, 1, attack_samples) ** 0.1
+        
+        # Sharp exponential decay for punchy "DUN!" quality
+        decay_rate = 8 + multiplier * 0.8  # Faster decay for higher multipliers
+        decay_curve = np.exp(-np.linspace(0, decay_rate, sample_count))
+        envelope = envelope * decay_curve
+        
+        wave = wave * envelope
+        
+        # Normalize and apply volume (louder for higher multipliers)
+        volume = 0.55 + min(multiplier - 2, 5) * 0.06  # Louder overall
+        wave = wave / np.max(np.abs(wave)) * volume
+        
+        # Convert to 16-bit stereo
+        wave = np.clip(wave * 32767, -32768, 32767).astype(np.int16)
+        stereo_wave = np.column_stack((wave, wave))
+        
+        return pygame.sndarray.make_sound(stereo_wave)
     
     def _generate_sweep_sound(self, freq_start, freq_end, duration, volume=0.5, wave_type='sine'):
         """
@@ -257,6 +347,59 @@ class AudioManager:
         
         # Normalize and apply volume
         wave = wave / np.max(np.abs(wave)) * 0.5
+        
+        # Convert to 16-bit stereo
+        wave = np.clip(wave * 32767, -32768, 32767).astype(np.int16)
+        stereo_wave = np.column_stack((wave, wave))
+        
+        return pygame.sndarray.make_sound(stereo_wave)
+    
+    def _generate_rocket_sound(self):
+        """
+        Generate fast whooshing sound for speed boost powerup.
+        Creates a natural sound of something moving through air at high speed.
+        
+        Returns:
+            pygame.Sound object
+        """
+        duration = 0.5  # Short loop for continuous whoosh
+        sample_count = int(AUDIO_SAMPLE_RATE * duration)
+        
+        t = np.linspace(0, duration, sample_count, False)
+        
+        # Create wind noise (the main whoosh component)
+        # Use band-limited noise for natural wind sound
+        noise = np.random.normal(0, 1.0, sample_count)
+        
+        # Apply band-pass filtering to focus on mid-high frequencies
+        # This creates the characteristic "whoosh" sound
+        for _ in range(2):
+            noise = np.convolve(noise, np.ones(15)/15, mode='same')
+        
+        # Add subtle low-frequency rumble for depth
+        rumble_freq = 100  # Hz
+        rumble = 0.2 * np.sin(2 * np.pi * rumble_freq * t)
+        
+        # Add mid-frequency tone for body
+        mid_freq = 300  # Hz
+        mid_tone = 0.15 * np.sin(2 * np.pi * mid_freq * t)
+        
+        # Combine elements - mostly noise with subtle tones
+        wave = noise * 0.7 + rumble + mid_tone
+        
+        # Add subtle amplitude variation for movement
+        movement = 1.0 + 0.1 * np.sin(2 * np.pi * 3 * t)
+        wave = wave * movement
+        
+        # Smooth envelope for seamless looping
+        fade_samples = int(sample_count * 0.15)  # 15% fade
+        envelope = np.ones(sample_count)
+        envelope[:fade_samples] = np.linspace(0, 1, fade_samples) ** 0.5
+        envelope[-fade_samples:] = (np.linspace(1, 0, fade_samples) ** 0.5)
+        wave = wave * envelope
+        
+        # Normalize and apply volume
+        wave = wave / np.max(np.abs(wave)) * 0.28
         
         # Convert to 16-bit stereo
         wave = np.clip(wave * 32767, -32768, 32767).astype(np.int16)
@@ -541,12 +684,18 @@ class AudioManager:
         
         Args:
             sound_name: Name of the sound to play ('jump', 'double_jump', etc.)
-            loop: If True, loop the sound indefinitely (for helicopter)
+            loop: If True, loop the sound indefinitely (for helicopter, rocket)
         """
         if sound_name in self.sounds:
             if loop:
                 # Use channel 1 for looping helicopter sound
-                channel = pygame.mixer.Channel(1)
+                # Use channel 2 for looping rocket sound
+                if sound_name == 'helicopter':
+                    channel = pygame.mixer.Channel(1)
+                elif sound_name == 'rocket':
+                    channel = pygame.mixer.Channel(2)
+                else:
+                    channel = pygame.mixer.Channel(1)
                 channel.play(self.sounds[sound_name], loops=-1)
             else:
                 self.sounds[sound_name].play()
@@ -561,6 +710,23 @@ class AudioManager:
         if sound_name == 'helicopter':
             channel = pygame.mixer.Channel(1)
             channel.stop()
+        elif sound_name == 'rocket':
+            channel = pygame.mixer.Channel(2)
+            channel.stop()
+    
+    def play_multiplier_sound(self, multiplier):
+        """
+        Play the ZING sound for the given multiplier level.
+        
+        Args:
+            multiplier: The multiplier level (2, 3, 4, 5, etc.)
+        """
+        # Cap at x10 for sound selection (we generated up to x10)
+        sound_multiplier = min(multiplier, 10)
+        sound_name = f'multiplier_{sound_multiplier}'
+        
+        if sound_name in self.sounds:
+            self.sounds[sound_name].play()
     
     def play_music(self):
         """Start playing background music loop."""

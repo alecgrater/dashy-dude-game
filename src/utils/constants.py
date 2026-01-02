@@ -25,6 +25,7 @@ PLAYER_COLLISION_HEIGHT = 30
 # Jump mechanics
 JUMP_VELOCITY = -600.0  # pixels/second (negative = up)
 DOUBLE_JUMP_VELOCITY = -550.0
+TRIPLE_JUMP_VELOCITY = -1000.0  # Extra jump powerup - SUPER high jump!
 DOUBLE_JUMP_SPEED_BOOST = 200.0  # Extra forward speed on double jump
 DOUBLE_JUMP_BOOST_DURATION = 0.5  # How long the boost lasts (seconds)
 HELICOPTER_FALL_SPEED = 100.0  # Slow fall during glide
@@ -95,7 +96,7 @@ UI_PADDING = 20
 SCORE_FONT_SIZE = 48
 TITLE_FONT_SIZE = 72
 BUTTON_FONT_SIZE = 36
-BUTTON_WIDTH = 200
+BUTTON_WIDTH = 250
 BUTTON_HEIGHT = 60
 BUTTON_HOVER_SCALE = 1.1
 
