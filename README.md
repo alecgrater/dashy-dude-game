@@ -21,7 +21,7 @@ uv run python run_game.py
 
 | Key | Action |
 |-----|--------|
-| **SPACE** | Jump / Double Jump / Helicopter Glide (hold after double jump) |
+| **SPACE** | Jump / Double Jump / Helicopter Glide |
 | **ESC** | Pause / Quit game |
 
 ## Gameplay
