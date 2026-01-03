@@ -1,6 +1,6 @@
 # Dashy Dude
 
-A polished endless runner platformer game featuring helicopter glide mechanics. Built with Python and Pygame-CE.
+A polished endless runner platformer game featuring helicopter glide mechanics. Built with Python and Pygame
 
 ![Dashy Dude Screenshot 1](assets/screenshots/screenshot_1.png)
 ![Dashy Dude Screenshot 2](assets/screenshots/screenshot_2.png)
