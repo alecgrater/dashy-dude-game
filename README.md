@@ -17,7 +17,7 @@ A polished endless runner platformer game featuring helicopter glide mechanics. 
 uv sync
 
 # Run the game
-uv run python run_game.py
+uv run python main.py
 ```
 
 ## Controls
