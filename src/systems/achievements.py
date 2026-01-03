@@ -237,6 +237,9 @@ class AchievementSystem:
     def save(self):
         """Save achievement progress to file."""
         try:
+            # Ensure data directory exists
+            os.makedirs(os.path.dirname(self.save_file), exist_ok=True)
+            
             data = {
                 'achievements': [
                     achievement.to_dict()
