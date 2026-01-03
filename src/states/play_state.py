@@ -484,8 +484,8 @@ class PlayState(BaseState):
                 # Stop helicopter sound if playing
                 self.audio.stop_sound('helicopter')
                 
-                # Stop rocket sound if playing
-                self.audio.stop_sound('rocket')
+                # Stop speed boost sound if playing
+                self.audio.stop_sound('speed_boost')
                 
                 sound_event = self.player.die()
                 if sound_event:
@@ -542,8 +542,8 @@ class PlayState(BaseState):
                     self.speed_boost_active = False
                     self.player.base_speed = PLAYER_RUN_SPEED  # Reset to normal
                     self.player.set_speed_boost_powerup_active(False)
-                    # Stop rocket sound
-                    self.audio.stop_sound('rocket')
+                    # Stop speed boost sound
+                    self.audio.stop_sound('speed_boost')
             else:
                 self.active_powerups[powerup_type] = time_remaining
         
@@ -585,8 +585,8 @@ class PlayState(BaseState):
                 self.player.set_speed_boost_powerup_active(True)
                 if not self.player.speed_boost_active:  # If not already boosting from double jump
                     self.player.velocity.x = self.player.base_speed
-                # Start rocket sound loop
-                self.audio.play_sound('rocket', loop=True)
+                # Start speed boost sound loop
+                self.audio.play_sound('speed_boost', loop=True)
             
             elif collectible.type == CollectibleType.SHIELD:
                 self.shield_active = True

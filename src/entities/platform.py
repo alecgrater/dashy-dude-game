@@ -51,13 +51,16 @@ class Platform:
         
         # Bouncy platform
         self.bounce_multiplier = 1.7  # Launch player higher (reduced from 1.5 to prevent overshooting)
+        self.bouncy_compression = 0.0  # 0-1 for compression animation
+        self.bouncy_compressed = False
         
         # Ice platform
         self.ice_friction = 0.3  # Reduced friction (0-1, lower = more slippery)
         
         # Conveyor platform
-        self.conveyor_speed = 150.0  # pixels/second
+        self.conveyor_speed = 350.0  # pixels/second (increased for more noticeable effect)
         self.conveyor_direction = 1  # 1 = right, -1 = left
+        self.conveyor_animation_offset = 0.0  # For arrow animation
         
         # Disappearing platform
         self.disappear_timer = 0.0
@@ -77,7 +80,7 @@ class Platform:
         # Squash and stretch
         self.scale_y = 1.0
         self.target_scale_y = 1.0
-        self.squash_speed = 20.0
+        self.squash_speed = 25.0  # Faster squash response
     
     def update(self, dt):
         """
@@ -97,13 +100,24 @@ class Platform:
             self._update_disappearing(dt)
         elif self.platform_type == PlatformType.SPRING:
             self._update_spring(dt)
+        elif self.platform_type == PlatformType.BOUNCY:
+            self._update_bouncy(dt)
+        elif self.platform_type == PlatformType.CONVEYOR:
+            self._update_conveyor(dt)
         
-        # Update squash and stretch
-        self.scale_y = lerp(self.scale_y, self.target_scale_y, self.squash_speed * dt)
-        self.target_scale_y = lerp(self.target_scale_y, 1.0, 8.0 * dt)
+        # Update squash and stretch - faster for bouncy platforms
+        if self.platform_type in (PlatformType.BOUNCY, PlatformType.SPRING):
+            self.scale_y = lerp(self.scale_y, self.target_scale_y, self.squash_speed * 1.5 * dt)
+            self.target_scale_y = lerp(self.target_scale_y, 1.0, 6.0 * dt)
+        else:
+            self.scale_y = lerp(self.scale_y, self.target_scale_y, self.squash_speed * dt)
+            self.target_scale_y = lerp(self.target_scale_y, 1.0, 8.0 * dt)
         
-        # Clamp scale
-        self.scale_y = max(0.5, min(1.2, self.scale_y))
+        # Clamp scale - allow more stretch for bouncy platforms
+        if self.platform_type in (PlatformType.BOUNCY, PlatformType.SPRING):
+            self.scale_y = max(0.25, min(1.5, self.scale_y))
+        else:
+            self.scale_y = max(0.5, min(1.2, self.scale_y))
     
     def _update_moving(self, dt):
         """Update moving platform position."""
@@ -137,10 +151,30 @@ class Platform:
     def _update_spring(self, dt):
         """Update spring platform compression animation."""
         if self.spring_compressed:
-            # Decompress spring
-            self.spring_compression = max(0.0, self.spring_compression - dt * 5.0)
+            # Decompress spring with dramatic bounce-back effect
+            self.spring_compression = max(0.0, self.spring_compression - dt * 12.0)
             if self.spring_compression <= 0.0:
                 self.spring_compressed = False
+                # Big snap back with overshoot - very bouncy!
+                self.target_scale_y = 1.4
+    
+    def _update_bouncy(self, dt):
+        """Update bouncy platform compression animation."""
+        if self.bouncy_compressed:
+            # Decompress bouncy platform with dramatic spring-back effect
+            self.bouncy_compression = max(0.0, self.bouncy_compression - dt * 15.0)
+            if self.bouncy_compression <= 0.0:
+                self.bouncy_compressed = False
+                # Big snap back with overshoot for super trampoline effect!
+                self.target_scale_y = 1.5
+    
+    def _update_conveyor(self, dt):
+        """Update conveyor belt animation."""
+        # Animate the arrow offset in the direction of the conveyor
+        arrow_spacing = 30
+        self.conveyor_animation_offset += self.conveyor_speed * self.conveyor_direction * dt * 0.5
+        # Wrap the offset to prevent overflow
+        self.conveyor_animation_offset = self.conveyor_animation_offset % arrow_spacing
     
     def on_player_land(self):
         """Called when player lands on this platform."""
@@ -149,10 +183,15 @@ class Platform:
         elif self.platform_type == PlatformType.SPRING:
             self.spring_compressed = True
             self.spring_compression = 1.0
+        elif self.platform_type == PlatformType.BOUNCY:
+            self.bouncy_compressed = True
+            self.bouncy_compression = 1.0
         
-        # Squash effect on landing (more for spring platforms)
+        # Squash effect on landing - super dramatic for bouncy platforms
         if self.platform_type == PlatformType.SPRING:
-            self.target_scale_y = 0.5
+            self.target_scale_y = 0.3  # Extreme compression for spring
+        elif self.platform_type == PlatformType.BOUNCY:
+            self.target_scale_y = 0.25  # Maximum compression for trampoline
         else:
             self.target_scale_y = 0.7
     
@@ -184,6 +223,7 @@ class Platform:
         
         # Reset conveyor platform (randomize direction)
         self.conveyor_direction = random.choice([-1, 1])
+        self.conveyor_animation_offset = 0.0
         
         # Reset disappearing platform
         self.disappear_cycle_time = 0.0
@@ -192,6 +232,10 @@ class Platform:
         # Reset spring platform
         self.spring_compressed = False
         self.spring_compression = 0.0
+        
+        # Reset bouncy platform
+        self.bouncy_compressed = False
+        self.bouncy_compression = 0.0
         
         # Reset squash and stretch
         self.scale_y = 1.0
@@ -309,25 +353,47 @@ class Platform:
                 pygame.draw.rect(screen, color,
                     (pos[0], pos[1] + height_diff, self.width, scaled_height))
             
-            # Draw conveyor arrows
+            # Draw conveyor arrows - larger and animated in direction of movement
             if self.platform_type == PlatformType.CONVEYOR:
                 arrow_color = (255, 255, 255)
-                arrow_spacing = 20
-                arrow_offset = int((self.move_time * self.conveyor_speed) % arrow_spacing)
-                for i in range(0, int(self.width), arrow_spacing):
+                arrow_outline = (80, 50, 10)  # Dark brown outline
+                arrow_spacing = 30
+                arrow_size = 8  # Larger arrows
+                
+                # Use the animated offset
+                arrow_offset = int(self.conveyor_animation_offset)
+                
+                for i in range(-arrow_spacing, int(self.width) + arrow_spacing, arrow_spacing):
                     arrow_x = pos[0] + i + arrow_offset
                     arrow_y = pos[1] + height_diff + scaled_height // 2
-                    if self.conveyor_direction > 0:
-                        # Right arrow
-                        pygame.draw.polygon(screen, arrow_color, [
-                            (arrow_x, arrow_y - 3),
-                            (arrow_x + 5, arrow_y),
-                            (arrow_x, arrow_y + 3)
-                        ])
-                    else:
-                        # Left arrow
-                        pygame.draw.polygon(screen, arrow_color, [
-                            (arrow_x + 5, arrow_y - 3),
-                            (arrow_x, arrow_y),
-                            (arrow_x + 5, arrow_y + 3)
-                        ])
+                    
+                    # Only draw if arrow is within platform bounds
+                    if arrow_x >= pos[0] - arrow_size and arrow_x <= pos[0] + self.width + arrow_size:
+                        if self.conveyor_direction > 0:
+                            # Right arrow (pointing right, moving right)
+                            # Draw outline first
+                            pygame.draw.polygon(screen, arrow_outline, [
+                                (arrow_x - arrow_size - 1, arrow_y - arrow_size - 1),
+                                (arrow_x + arrow_size + 1, arrow_y),
+                                (arrow_x - arrow_size - 1, arrow_y + arrow_size + 1)
+                            ])
+                            # Draw arrow
+                            pygame.draw.polygon(screen, arrow_color, [
+                                (arrow_x - arrow_size, arrow_y - arrow_size),
+                                (arrow_x + arrow_size, arrow_y),
+                                (arrow_x - arrow_size, arrow_y + arrow_size)
+                            ])
+                        else:
+                            # Left arrow (pointing left, moving left)
+                            # Draw outline first
+                            pygame.draw.polygon(screen, arrow_outline, [
+                                (arrow_x + arrow_size + 1, arrow_y - arrow_size - 1),
+                                (arrow_x - arrow_size - 1, arrow_y),
+                                (arrow_x + arrow_size + 1, arrow_y + arrow_size + 1)
+                            ])
+                            # Draw arrow
+                            pygame.draw.polygon(screen, arrow_color, [
+                                (arrow_x + arrow_size, arrow_y - arrow_size),
+                                (arrow_x - arrow_size, arrow_y),
+                                (arrow_x + arrow_size, arrow_y + arrow_size)
+                            ])

@@ -122,10 +122,10 @@ COMBO_SCORE_FONT_SIZE = 32  # For score display in indicator
 COMBO_COLORS = [
     (100, 100, 100),    # 1x - Gray (no combo)
     (100, 255, 100),    # 2x - Green
-    (255, 165, 0),      # 3x - Orange
-    (255, 215, 0),      # 4x - Gold
-    (255, 0, 255),      # 5x - Magenta
-    (255, 50, 255),     # 6x - Pink (max)
+    (52, 152, 219),     # 3x - Blue
+    (155, 89, 182),     # 4x - Purple
+    (255, 215, 0),      # 5x - Gold
+    (231, 76, 60),      # 6x - Red (max) - ON FIRE!
 ]
 
 # Water settings

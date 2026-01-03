@@ -132,6 +132,9 @@ class PlatformGenerator:
         # Determine platform width
         if platform_type == PlatformType.SMALL:
             width = SMALL_PLATFORM_WIDTH
+        elif platform_type == PlatformType.CONVEYOR:
+            # Conveyor platforms are always significantly larger
+            width = MAX_PLATFORM_WIDTH + 80  # Extra wide conveyor belt
         else:
             width = random.randint(MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH)
         

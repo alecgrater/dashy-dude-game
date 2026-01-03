@@ -286,6 +286,8 @@ class SpriteGenerator:
             'moving': self._generate_moving_platform(),
             'small': self._generate_small_platform(),
             'crumbling': self._generate_crumbling_platform(),
+            'bouncy': self._generate_bouncy_platform(),
+            'spring': self._generate_spring_platform(),
         }
     
     def _generate_static_platform(self):
@@ -336,6 +338,77 @@ class SpriteGenerator:
             for x in range(5, width, 15):
                 pygame.draw.line(surface, self.player_colors['outline'], (x, 6), (x + 3, 10), 1)
                 pygame.draw.line(surface, self.player_colors['outline'], (x + 3, 10), (x + 1, 14), 1)
+        elif platform_type == 'bouncy':
+            # Trampoline-style bouncy platform - orange/yellow with curved bounce surface
+            bouncy_orange = (255, 165, 0)  # Orange
+            bouncy_yellow = (255, 220, 50)  # Bright yellow
+            bouncy_dark = (180, 100, 0)  # Dark orange for frame
+            arrow_color = (255, 255, 255)  # White arrows
+            arrow_outline = (100, 60, 0)  # Dark outline for arrows
+            
+            # Draw the frame/base (darker orange sides)
+            pygame.draw.rect(surface, bouncy_dark, (0, height - 4, width, 4))
+            pygame.draw.rect(surface, bouncy_dark, (0, 0, 3, height))
+            pygame.draw.rect(surface, bouncy_dark, (width - 3, 0, 3, height))
+            
+            # Draw the bouncy surface (curved appearance with stripes)
+            pygame.draw.rect(surface, bouncy_orange, (3, 0, width - 6, height - 4))
+            
+            # Draw diagonal stripes to indicate elasticity/bounce
+            stripe_color = bouncy_yellow
+            stripe_spacing = 6
+            for x in range(-height, width, stripe_spacing):
+                pygame.draw.line(surface, stripe_color,
+                    (max(3, x), 0),
+                    (min(width - 3, x + height - 4), min(height - 4, height - 4)), 1)
+            
+            # Draw BIG upward arrows to indicate bounce direction - much more visible
+            arrow_spacing = 20
+            for x in range(width // 2 - arrow_spacing, 3, -arrow_spacing):
+                self._draw_bounce_arrow(surface, x, height, arrow_color, arrow_outline)
+            for x in range(width // 2, width - 3, arrow_spacing):
+                self._draw_bounce_arrow(surface, x, height, arrow_color, arrow_outline)
+            # Always draw center arrow
+            self._draw_bounce_arrow(surface, width // 2, height, arrow_color, arrow_outline)
+                
+        elif platform_type == 'spring':
+            # Spring platform with coil spring appearance - lime green
+            spring_green = (50, 205, 50)  # Lime green
+            spring_light = (144, 238, 144)  # Light green
+            spring_dark = (34, 139, 34)  # Forest green for coils
+            coil_color = (255, 255, 255)  # White for spring coils
+            arrow_color = (255, 255, 255)  # White arrows
+            arrow_outline = (20, 80, 20)  # Dark green outline
+            
+            # Draw the base/spring housing
+            pygame.draw.rect(surface, spring_dark, (0, height - 4, width, 4))
+            pygame.draw.rect(surface, spring_dark, (0, 0, 3, height))
+            pygame.draw.rect(surface, spring_dark, (width - 3, 0, 3, height))
+            
+            # Draw the spring coil area
+            pygame.draw.rect(surface, spring_green, (3, 0, width - 6, height - 4))
+            
+            # Draw zigzag spring pattern across the platform
+            coil_color_dark = (200, 255, 200)
+            for y_base in range(4, height - 6, 6):
+                coil_points = []
+                for x in range(5, width - 5, 4):
+                    y_offset = 2 if ((x // 4) % 2 == 0) else -2
+                    coil_points.append((x, y_base + y_offset))
+                if len(coil_points) > 1:
+                    pygame.draw.lines(surface, coil_color_dark, False, coil_points, 1)
+            
+            # Draw BIG upward arrows - much more visible
+            arrow_spacing = 18
+            for x in range(width // 2 - arrow_spacing, 3, -arrow_spacing):
+                self._draw_bounce_arrow(surface, x, height, arrow_color, arrow_outline)
+            for x in range(width // 2, width - 3, arrow_spacing):
+                self._draw_bounce_arrow(surface, x, height, arrow_color, arrow_outline)
+            # Always draw center arrow
+            self._draw_bounce_arrow(surface, width // 2, height, arrow_color, arrow_outline)
+            
+            # Draw highlight on top
+            pygame.draw.rect(surface, spring_light, (3, 0, width - 6, 2))
         
         # Scale up
         scaled = pygame.transform.scale(surface,
@@ -357,6 +430,14 @@ class SpriteGenerator:
     def _generate_crumbling_platform(self):
         """Generate crumbling platform with red tint and cracks."""
         return self._generate_platform_with_size('crumbling', MAX_PLATFORM_WIDTH)
+    
+    def _generate_bouncy_platform(self):
+        """Generate bouncy platform with trampoline-like appearance."""
+        return self._generate_platform_with_size('bouncy', MAX_PLATFORM_WIDTH)
+    
+    def _generate_spring_platform(self):
+        """Generate spring platform with coil spring appearance."""
+        return self._generate_platform_with_size('spring', MAX_PLATFORM_WIDTH)
     
     def generate_particle_sprites(self):
         """
@@ -416,6 +497,48 @@ class SpriteGenerator:
             Platform sprite surface
         """
         return self._generate_platform_with_size(platform_type, width)
+    
+    def _draw_bounce_arrow(self, surface, x, height, arrow_color, outline_color):
+        """
+        Draw a large, visible upward-pointing bounce arrow.
+        
+        Args:
+            surface: Surface to draw on
+            x: X center position of arrow
+            height: Platform height (arrow drawn relative to this)
+            arrow_color: Fill color for arrow
+            outline_color: Outline color for arrow
+        """
+        # Large upward arrow with stem
+        arrow_top = 2
+        arrow_mid = height // 2
+        arrow_bottom = height - 6
+        arrow_width = 6
+        stem_width = 2
+        
+        # Arrow head (triangle pointing up)
+        arrow_head = [
+            (x, arrow_top),  # Top point
+            (x - arrow_width, arrow_mid),  # Bottom left
+            (x + arrow_width, arrow_mid),  # Bottom right
+        ]
+        
+        # Draw outline first (slightly larger)
+        outline_head = [
+            (x, arrow_top - 1),
+            (x - arrow_width - 1, arrow_mid + 1),
+            (x + arrow_width + 1, arrow_mid + 1),
+        ]
+        pygame.draw.polygon(surface, outline_color, outline_head)
+        pygame.draw.rect(surface, outline_color,
+            (x - stem_width - 1, arrow_mid, stem_width * 2 + 2, arrow_bottom - arrow_mid + 1))
+        
+        # Draw arrow head
+        pygame.draw.polygon(surface, arrow_color, arrow_head)
+        
+        # Draw arrow stem
+        pygame.draw.rect(surface, arrow_color,
+            (x - stem_width, arrow_mid, stem_width * 2, arrow_bottom - arrow_mid))
     
     def clear_cache(self):
         """Clear all sprite caches to free memory."""

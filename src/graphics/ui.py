@@ -42,6 +42,10 @@ class ComboIndicator:
         
         # Particle effects for level up
         self.particles = []
+        
+        # Fire effect for max combo (6x)
+        self.fire_particles = []
+        self.fire_time = 0.0
     
     def update(self, dt, combo_count, combo_level, combo_timer):
         """
@@ -148,6 +152,79 @@ class ComboIndicator:
         # Move particles
         self.particles = [(px + pvx * dt, py + pvy * dt, pvx, pvy, plife, pcolor)
                          for px, py, pvx, pvy, plife, pcolor in self.particles]
+        
+        # Fire effect for max combo (6x = combo_level 5)
+        if combo_level >= 5:
+            self.fire_time += dt
+            self._update_fire_particles(dt)
+        else:
+            self.fire_particles = []
+            self.fire_time = 0.0
+    
+    def _update_fire_particles(self, dt):
+        """Update fire particle effect for max combo."""
+        # Spawn new fire particles
+        spawn_rate = 0.02  # Spawn every 20ms
+        particles_to_spawn = int(dt / spawn_rate) + (1 if random.random() < (dt % spawn_rate) / spawn_rate else 0)
+        
+        panel_x = self.x
+        panel_y = self.y
+        
+        for _ in range(particles_to_spawn):
+            # Spawn along the bottom and sides of the panel
+            spawn_side = random.choice(['bottom', 'left', 'right', 'bottom', 'bottom'])  # More from bottom
+            
+            if spawn_side == 'bottom':
+                px = panel_x + random.uniform(0, self.width)
+                py = panel_y + self.height
+            elif spawn_side == 'left':
+                px = panel_x
+                py = panel_y + random.uniform(self.height * 0.5, self.height)
+            else:  # right
+                px = panel_x + self.width
+                py = panel_y + random.uniform(self.height * 0.5, self.height)
+            
+            # Fire rises with some horizontal wobble
+            vx = random.uniform(-30, 30)
+            vy = random.uniform(-150, -80)  # Rise upward
+            
+            # Fire colors: red, orange, yellow
+            color_choice = random.random()
+            if color_choice < 0.4:
+                color = (255, random.randint(50, 100), 0)  # Red-orange
+            elif color_choice < 0.7:
+                color = (255, random.randint(100, 180), 0)  # Orange
+            else:
+                color = (255, random.randint(180, 255), random.randint(0, 50))  # Yellow-orange
+            
+            life = random.uniform(0.4, 0.8)
+            size = random.uniform(4, 10)
+            
+            self.fire_particles.append({
+                'x': px, 'y': py,
+                'vx': vx, 'vy': vy,
+                'life': life, 'max_life': life,
+                'color': color,
+                'size': size
+            })
+        
+        # Update existing fire particles
+        updated_particles = []
+        for p in self.fire_particles:
+            p['life'] -= dt
+            if p['life'] > 0:
+                # Add wobble to horizontal movement
+                wobble = math.sin(self.fire_time * 10 + p['x'] * 0.1) * 20
+                p['x'] += (p['vx'] + wobble) * dt
+                p['y'] += p['vy'] * dt
+                # Fire accelerates upward slightly
+                p['vy'] -= 50 * dt
+                # Shrink as it rises
+                life_ratio = p['life'] / p['max_life']
+                p['current_size'] = p['size'] * life_ratio
+                updated_particles.append(p)
+        
+        self.fire_particles = updated_particles
     
     def trigger_level_up(self, new_level):
         """
@@ -265,6 +342,10 @@ class ComboIndicator:
         
         # Render particles
         self._render_particles(screen)
+        
+        # Render fire effect for max combo
+        if combo_level >= 5:
+            self._render_fire_effect(screen, panel_rect)
         
         # Level up flash effect - more epic
         if self.level_up_animation > 0 or self.epic_glow > 0:
@@ -525,6 +606,67 @@ class ComboIndicator:
                 color_with_alpha = (r, g, b, alpha)
                 pygame.draw.circle(particle_surface, color_with_alpha, (size, size), size)
                 screen.blit(particle_surface, (int(px) - size, int(py) - size))
+    
+    def _render_fire_effect(self, screen, panel_rect):
+        """Render smooth fire animation effect for max combo."""
+        # Render fire particles
+        for p in self.fire_particles:
+            if p['life'] <= 0:
+                continue
+            
+            life_ratio = p['life'] / p['max_life']
+            alpha = int(255 * life_ratio * 0.8)
+            size = int(p.get('current_size', p['size']))
+            
+            if size > 0 and alpha > 0:
+                # Create a soft glow effect for each fire particle
+                glow_size = size * 3
+                fire_surface = pygame.Surface((glow_size * 2, glow_size * 2), pygame.SRCALPHA)
+                
+                # Draw outer glow
+                glow_alpha = int(alpha * 0.3)
+                r, g, b = p['color']
+                pygame.draw.circle(fire_surface, (r, g, b, glow_alpha),
+                                 (glow_size, glow_size), glow_size)
+                
+                # Draw middle glow
+                mid_alpha = int(alpha * 0.6)
+                pygame.draw.circle(fire_surface, (r, g, b, mid_alpha),
+                                 (glow_size, glow_size), int(glow_size * 0.6))
+                
+                # Draw bright core
+                core_color = (min(255, r + 50), min(255, g + 50), min(255, b + 50), alpha)
+                pygame.draw.circle(fire_surface, core_color,
+                                 (glow_size, glow_size), size)
+                
+                screen.blit(fire_surface, (int(p['x']) - glow_size, int(p['y']) - glow_size))
+        
+        # Add a subtle animated glow around the entire panel
+        glow_intensity = 0.5 + 0.3 * math.sin(self.fire_time * 5)
+        glow_alpha = int(80 * glow_intensity)
+        
+        # Create glow surface larger than panel
+        glow_padding = 15
+        glow_surface = pygame.Surface(
+            (panel_rect.width + glow_padding * 2, panel_rect.height + glow_padding * 2),
+            pygame.SRCALPHA
+        )
+        
+        # Draw multiple glow layers
+        fire_color = COMBO_COLORS[5]  # Red for max combo
+        for i in range(3):
+            layer_alpha = glow_alpha // (i + 1)
+            layer_padding = glow_padding - i * 4
+            if layer_padding > 0:
+                glow_rect = pygame.Rect(
+                    glow_padding - layer_padding,
+                    glow_padding - layer_padding,
+                    panel_rect.width + layer_padding * 2,
+                    panel_rect.height + layer_padding * 2
+                )
+                pygame.draw.rect(glow_surface, (*fire_color, layer_alpha), glow_rect, border_radius=12)
+        
+        screen.blit(glow_surface, (panel_rect.x - glow_padding, panel_rect.y - glow_padding))
 
 
 class ScorePopup:
