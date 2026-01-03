@@ -4,6 +4,8 @@ Uses pygame.mixer for audio playback and numpy for sound synthesis.
 """
 import pygame
 import numpy as np
+import os
+import random
 from src.utils.constants import *
 
 
@@ -34,6 +36,8 @@ class AudioManager:
         
         # Music state
         self.music_playing = False
+        self.menu_music_playing = False
+        self.current_song = None
         
         print("Audio system initialized")
     
@@ -414,11 +418,26 @@ class AudioManager:
             pitched_sound.play()
     
     def play_music(self):
-        """Start playing background music loop."""
+        """Start playing background music loop with a randomly selected song."""
         if not self.music_playing:
-            # Load custom music file
-            music_sound = pygame.mixer.Sound('assets/sounds/song_1.wav')
-            print("Loaded custom background music from assets/sounds/song_1.wav")
+            # Get all music files from the game_music folder
+            music_folder = 'assets/sounds/game_music'
+            music_files = []
+            
+            if os.path.exists(music_folder):
+                for filename in os.listdir(music_folder):
+                    if filename.endswith(('.wav', '.mp3', '.ogg')):
+                        music_files.append(os.path.join(music_folder, filename))
+            
+            if music_files:
+                # Randomly select a song
+                selected_song = random.choice(music_files)
+                music_sound = pygame.mixer.Sound(selected_song)
+                print(f"Loaded random background music: {selected_song}")
+            else:
+                # Fallback to default if no songs found
+                print("No music files found in game_music folder")
+                return
             
             # Use a channel for looping
             channel = pygame.mixer.Channel(0)  # Reserve channel 0 for music
@@ -426,6 +445,7 @@ class AudioManager:
             channel.set_volume(AUDIO_VOLUME * 0.3)  # Quieter than sound effects
             
             self.music_playing = True
+            self.current_song = selected_song
             print("Background music started")
     
     def stop_music(self):
@@ -449,6 +469,33 @@ class AudioManager:
             channel = pygame.mixer.Channel(0)
             channel.unpause()
             print("Background music resumed")
+    
+    def play_menu_music(self):
+        """Start playing menu music loop."""
+        if not self.menu_music_playing:
+            menu_music_path = 'assets/sounds/menu.wav'
+            
+            if os.path.exists(menu_music_path):
+                menu_sound = pygame.mixer.Sound(menu_music_path)
+                print(f"Loaded menu music: {menu_music_path}")
+                
+                # Use channel 3 for menu music (separate from game music on channel 0)
+                channel = pygame.mixer.Channel(3)
+                channel.play(menu_sound, loops=-1)  # Loop indefinitely
+                channel.set_volume(AUDIO_VOLUME * 0.3)  # Same volume as game music
+                
+                self.menu_music_playing = True
+                print("Menu music started")
+            else:
+                print(f"Menu music file not found: {menu_music_path}")
+    
+    def stop_menu_music(self):
+        """Stop menu music."""
+        if self.menu_music_playing:
+            channel = pygame.mixer.Channel(3)
+            channel.stop()
+            self.menu_music_playing = False
+            print("Menu music stopped")
     
     def set_volume(self, volume):
         """

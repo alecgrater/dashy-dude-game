@@ -3,6 +3,7 @@ Main gameplay state.
 """
 import pygame
 import math
+from datetime import datetime
 from src.states.base_state import BaseState
 from src.entities.player import Player
 from src.entities.platform import PlatformType
@@ -18,6 +19,11 @@ from src.graphics.background import Background
 from src.graphics.particles import ParticleSystem
 from src.utils.constants import *
 from src.utils.math_utils import Vector2
+from src.utils.analytics import (
+    RunStatistics, format_time, format_number, format_distance,
+    get_platform_display_name, get_collectible_display_name,
+    get_platform_color, get_collectible_color
+)
 
 
 class PlayState(BaseState):
@@ -55,7 +61,10 @@ class PlayState(BaseState):
         self.restart_button_rect = None
         self.gameover_menu_button_rect = None
         
-        # Statistics tracking
+        # Statistics tracking - use RunStatistics for detailed tracking
+        self.run_stats = RunStatistics()
+        
+        # Legacy stats dict for achievement system compatibility
         self.stats = {
             'total_jumps': 0,
             'double_jumps': 0,
@@ -68,6 +77,10 @@ class PlayState(BaseState):
             'max_difficulty_reached': 0.0,
             'total_platforms_landed': 0  # Cumulative across all runs
         }
+        
+        # Game over screen state
+        self.gameover_scroll_offset = 0
+        self.gameover_max_scroll = 0
         
         # Achievement notification queue
         self.achievement_notifications = []
@@ -87,6 +100,9 @@ class PlayState(BaseState):
     
     def enter(self):
         """Initialize gameplay."""
+        # Stop menu music before starting game
+        self.game.audio_manager.stop_menu_music()
+        
         # Start with fade in
         self.game.ui_renderer.start_fade(fade_in=True)
         
@@ -140,7 +156,10 @@ class PlayState(BaseState):
         # Load cumulative stats from previous runs
         previous_total_platforms = self.stats.get('total_platforms_landed', 0)
         
-        # Reset statistics
+        # Reset detailed run statistics
+        self.run_stats = RunStatistics()
+        
+        # Reset legacy statistics
         self.stats = {
             'total_jumps': 0,
             'double_jumps': 0,
@@ -153,6 +172,10 @@ class PlayState(BaseState):
             'max_difficulty_reached': 0.0,
             'total_platforms_landed': previous_total_platforms  # Preserve cumulative stat
         }
+        
+        # Reset game over screen scroll
+        self.gameover_scroll_offset = 0
+        self.gameover_max_scroll = 0
         
         # Clear achievement notifications
         self.achievement_notifications.clear()
@@ -200,11 +223,17 @@ class PlayState(BaseState):
         self.stats['play_time'] += dt
         self.stats['distance_traveled'] = int(self.camera.position.x)
         
+        # Update detailed run stats
+        self.run_stats.play_time += dt
+        self.run_stats.distance_traveled = int(self.camera.position.x)
+        
         # Update difficulty
         self.difficulty_manager.update(dt)
         current_difficulty = self.difficulty_manager.get_difficulty_level()
         if current_difficulty > self.stats['max_difficulty_reached']:
             self.stats['max_difficulty_reached'] = current_difficulty
+        if current_difficulty > self.run_stats.max_difficulty_reached:
+            self.run_stats.max_difficulty_reached = current_difficulty
         
         # Update achievements
         self.achievement_system.update(self.stats)
@@ -248,13 +277,18 @@ class PlayState(BaseState):
         # Update player and handle sound events
         sound_event = self.player.update(dt, self.game.input_handler, self.physics)
         if sound_event:
-            # Track statistics
+            # Track statistics (legacy)
             if sound_event == 'jump':
                 self.stats['total_jumps'] += 1
+                self.run_stats.record_jump('single')
             elif sound_event == 'double_jump':
                 self.stats['double_jumps'] += 1
+                self.run_stats.record_jump('double')
+            elif sound_event == 'triple_jump':
+                self.run_stats.record_jump('triple')
             elif sound_event == 'helicopter':
                 self.stats['helicopter_uses'] += 1
+                self.run_stats.record_jump('helicopter')
             
             # Emit particles based on action
             player_center_x = self.player.position.x + self.player.width / 2
@@ -366,6 +400,10 @@ class PlayState(BaseState):
             self.stats['platforms_landed'] += 1
             self.stats['total_platforms_landed'] += 1
             
+            # Track detailed platform stats by type
+            platform_type_name = collision_platform.platform_type.value
+            self.run_stats.record_platform_landing(platform_type_name)
+            
             # Update combo
             self.game.ui_renderer.add_combo()
             combo_multiplier = self.game.ui_renderer.get_combo_multiplier()
@@ -382,6 +420,12 @@ class PlayState(BaseState):
             # Track max combo
             if self.game.ui_renderer.combo_count > self.stats['max_combo']:
                 self.stats['max_combo'] = self.game.ui_renderer.combo_count
+            
+            # Update detailed combo stats
+            self.run_stats.update_combo(
+                self.game.ui_renderer.combo_count,
+                combo_multiplier
+            )
             
             # Update score with combo multiplier and double points
             score_gain = int(SCORE_PER_PLATFORM * combo_multiplier)
@@ -440,6 +484,9 @@ class PlayState(BaseState):
         
         for collectible in collected:
             self.stats['collectibles_gathered'] += 1
+            # Track detailed collectible stats by type
+            collectible_type_name = collectible.type.value
+            self.run_stats.record_collectible(collectible_type_name)
             self._handle_collectible(collectible)
         
         # Check water collision (death)
@@ -448,6 +495,7 @@ class PlayState(BaseState):
             if self.shield_active:
                 # Shield saves the player - teleport back up to the very top
                 self.shield_active = False
+                self.run_stats.shields_used += 1
                 self.player.position.y = 50  # Respawn at the very top of the screen
                 self.player.velocity.y = JUMP_VELOCITY  # Give them a jump
                 
@@ -625,15 +673,279 @@ class PlayState(BaseState):
     
     def _handle_game_over(self):
         """Handle game over - check for high score and save."""
+        # Finalize run statistics
+        self.run_stats.score = self.score
+        self.run_stats.timestamp = datetime.now().isoformat()
+        
         # Check if this is a new high score
         self.is_new_high_score = self.save_system.is_high_score(self.score)
         
-        # Save the score
+        # Save the score to high scores if it qualifies
         if self.is_new_high_score:
             self.save_system.add_score(self.score, stats=self.stats)
             rank = self.save_system.get_rank(self.score)
             if rank:
                 print(f"New High Score! Rank #{rank}")
+        
+        # Always save run to history and update all-time stats
+        self.save_system.add_run(self.run_stats.to_dict())
+        
+        # Calculate max scroll for game over screen
+        self._calculate_gameover_scroll()
+    
+    def _calculate_gameover_scroll(self):
+        """Calculate the maximum scroll offset for game over screen."""
+        # Estimate content height based on stats
+        content_height = 600  # Base height for all stats
+        self.gameover_max_scroll = max(0, content_height - 400)  # 400 is visible area
+    
+    def _render_gradient_background(self, screen):
+        """Render a faded gradient background for game over and title screens."""
+        # Create gradient from dark purple at top to dark blue at bottom
+        for y in range(SCREEN_HEIGHT):
+            # Calculate gradient progress (0 at top, 1 at bottom)
+            progress = y / SCREEN_HEIGHT
+            
+            # Interpolate between colors
+            # Top color: dark purple (40, 20, 60)
+            # Bottom color: dark blue (20, 30, 80)
+            r = int(40 + (20 - 40) * progress)
+            g = int(20 + (30 - 20) * progress)
+            b = int(60 + (80 - 60) * progress)
+            
+            # Draw horizontal line
+            pygame.draw.line(screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+        
+        # Add subtle vignette effect (darker at edges)
+        vignette = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        
+        # Draw radial gradient for vignette
+        center_x, center_y = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        max_dist = math.sqrt(center_x ** 2 + center_y ** 2)
+        
+        for y in range(0, SCREEN_HEIGHT, 4):  # Step by 4 for performance
+            for x in range(0, SCREEN_WIDTH, 4):
+                dist = math.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+                alpha = int((dist / max_dist) * 100)  # Max alpha of 100
+                pygame.draw.rect(vignette, (0, 0, 0, alpha), (x, y, 4, 4))
+        
+        screen.blit(vignette, (0, 0))
+    
+    def _render_game_over_screen(self, screen):
+        """Render comprehensive game over screen with detailed statistics."""
+        # Draw gradient background instead of last frame
+        self._render_gradient_background(screen)
+        
+        # Title at top center
+        title_font = pygame.font.Font(None, 72)
+        if self.is_new_high_score:
+            title_text = "NEW HIGH SCORE!"
+            title_color = (255, 215, 0)  # Gold
+        else:
+            title_text = "GAME OVER"
+            title_color = UI_ACCENT
+        
+        # Render title shadow
+        shadow_surface = title_font.render(title_text, True, (0, 0, 0))
+        shadow_rect = shadow_surface.get_rect(center=(SCREEN_WIDTH // 2 + 3, 60 + 3))
+        screen.blit(shadow_surface, shadow_rect)
+        
+        # Render title
+        title_surface = title_font.render(title_text, True, title_color)
+        title_rect = title_surface.get_rect(center=(SCREEN_WIDTH // 2, 60))
+        screen.blit(title_surface, title_rect)
+        
+        # Create scrollable content area - needs enough height for all stats
+        # Calculate needed height: title(35) + rank(30) + divider(25) + general/jumps(~130) + divider(25) + platforms/collectibles(~200)
+        content_height = 500  # Increased to fit all platform and collectible types
+        content_surface = pygame.Surface((SCREEN_WIDTH - 100, content_height), pygame.SRCALPHA)
+        content_y = 0
+        
+        # Fonts
+        header_font = pygame.font.Font(None, 32)
+        stat_font = pygame.font.Font(None, 24)
+        small_font = pygame.font.Font(None, 20)
+        
+        # Final Score (large, centered)
+        score_text = header_font.render(f"Final Score: {format_number(self.score)}", True, UI_ACCENT)
+        score_rect = score_text.get_rect(centerx=(SCREEN_WIDTH - 100) // 2)
+        content_surface.blit(score_text, (score_rect.x, content_y))
+        content_y += 35
+        
+        # Show rank if high score
+        if self.is_new_high_score:
+            rank = self.save_system.get_rank(self.score)
+            if rank:
+                rank_text = stat_font.render(f"Rank: #{rank}", True, (255, 215, 0))
+                rank_rect = rank_text.get_rect(centerx=(SCREEN_WIDTH - 100) // 2)
+                content_surface.blit(rank_text, (rank_rect.x, content_y))
+                content_y += 30
+        
+        content_y += 10
+        
+        # Divider
+        pygame.draw.line(content_surface, (100, 100, 120), (50, content_y), (SCREEN_WIDTH - 150, content_y), 2)
+        content_y += 15
+        
+        # Two-column layout for stats
+        col1_x = 30
+        col2_x = (SCREEN_WIDTH - 100) // 2 + 20
+        col_width = (SCREEN_WIDTH - 100) // 2 - 50
+        
+        # Column 1: General Stats
+        section_title = stat_font.render("GENERAL", True, UI_ACCENT)
+        content_surface.blit(section_title, (col1_x, content_y))
+        
+        # Column 2: Jumps
+        section_title2 = stat_font.render("JUMPS", True, UI_ACCENT)
+        content_surface.blit(section_title2, (col2_x, content_y))
+        content_y += 28
+        
+        # General stats
+        general_stats = [
+            ("Play Time", format_time(self.run_stats.play_time)),
+            ("Distance", format_distance(self.run_stats.distance_traveled)),
+            ("Max Combo", format_number(self.run_stats.max_combo)),
+            ("Max Multiplier", f"x{self.run_stats.max_multiplier}"),
+        ]
+        
+        # Jump stats
+        jump_stats = [
+            ("Total Jumps", format_number(self.run_stats.total_jumps)),
+            ("Single", format_number(self.run_stats.single_jumps)),
+            ("Double", format_number(self.run_stats.double_jumps)),
+            ("Triple", format_number(self.run_stats.triple_jumps)),
+            ("Helicopter", format_number(self.run_stats.helicopter_uses)),
+        ]
+        
+        # Render general stats
+        stat_y = content_y
+        for label, value in general_stats:
+            label_text = small_font.render(f"{label}:", True, (180, 180, 180))
+            value_text = small_font.render(str(value), True, UI_TEXT)
+            content_surface.blit(label_text, (col1_x, stat_y))
+            content_surface.blit(value_text, (col1_x + 110, stat_y))
+            stat_y += 22
+        
+        # Render jump stats
+        stat_y = content_y
+        for label, value in jump_stats:
+            label_text = small_font.render(f"{label}:", True, (180, 180, 180))
+            value_text = small_font.render(str(value), True, UI_TEXT)
+            content_surface.blit(label_text, (col2_x, stat_y))
+            content_surface.blit(value_text, (col2_x + 100, stat_y))
+            stat_y += 22
+        
+        content_y = max(stat_y, content_y + len(general_stats) * 22) + 15
+        
+        # Divider
+        pygame.draw.line(content_surface, (100, 100, 120), (50, content_y), (SCREEN_WIDTH - 150, content_y), 2)
+        content_y += 15
+        
+        # Platforms section (left column)
+        section_title = stat_font.render(f"PLATFORMS: {self.run_stats.total_platforms_landed}", True, UI_ACCENT)
+        content_surface.blit(section_title, (col1_x, content_y))
+        
+        # Collectibles section (right column)
+        section_title2 = stat_font.render(f"COLLECTIBLES: {self.run_stats.total_collectibles}", True, UI_ACCENT)
+        content_surface.blit(section_title2, (col2_x, content_y))
+        content_y += 28
+        
+        # Render platform breakdown as simple list with small bars
+        platform_y = content_y
+        bar_width = 80
+        bar_height = 12
+        max_platform_count = max(self.run_stats.platforms_landed.values()) if self.run_stats.platforms_landed.values() else 1
+        if max_platform_count == 0:
+            max_platform_count = 1
+        
+        platform_items = list(self.run_stats.platforms_landed.items())
+        
+        for i, (ptype, count) in enumerate(platform_items):
+            item_y = platform_y + i * 20
+            
+            # Platform name
+            display_name = get_platform_display_name(ptype)
+            name_text = small_font.render(display_name, True, UI_TEXT)
+            content_surface.blit(name_text, (col1_x, item_y))
+            
+            # Bar
+            bar_x = col1_x + 85
+            pygame.draw.rect(content_surface, (40, 40, 50), (bar_x, item_y + 2, bar_width, bar_height), border_radius=2)
+            fill_width = int((count / max_platform_count) * bar_width)
+            if fill_width > 0:
+                color = get_platform_color(ptype)
+                pygame.draw.rect(content_surface, color, (bar_x, item_y + 2, fill_width, bar_height), border_radius=2)
+            
+            # Count
+            count_text = small_font.render(str(count), True, UI_TEXT)
+            content_surface.blit(count_text, (bar_x + bar_width + 5, item_y))
+        
+        # Render collectible breakdown (right column)
+        max_collectible_count = max(self.run_stats.collectibles_gathered.values()) if self.run_stats.collectibles_gathered.values() else 1
+        if max_collectible_count == 0:
+            max_collectible_count = 1
+        
+        collectible_items = list(self.run_stats.collectibles_gathered.items())
+        
+        for i, (ctype, count) in enumerate(collectible_items):
+            item_y = platform_y + i * 20
+            
+            # Collectible name
+            display_name = get_collectible_display_name(ctype)
+            name_text = small_font.render(display_name, True, UI_TEXT)
+            content_surface.blit(name_text, (col2_x, item_y))
+            
+            # Bar
+            bar_x = col2_x + 85
+            pygame.draw.rect(content_surface, (40, 40, 50), (bar_x, item_y + 2, bar_width, bar_height), border_radius=2)
+            fill_width = int((count / max_collectible_count) * bar_width)
+            if fill_width > 0:
+                color = get_collectible_color(ctype)
+                pygame.draw.rect(content_surface, color, (bar_x, item_y + 2, fill_width, bar_height), border_radius=2)
+            
+            # Count
+            count_text = small_font.render(str(count), True, UI_TEXT)
+            content_surface.blit(count_text, (bar_x + bar_width + 5, item_y))
+        
+        # Blit content surface to screen
+        screen.blit(content_surface, (50, 120))
+        
+        # Get mouse position for hover detection
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # Buttons at bottom
+        button_width = 200
+        button_height = 50
+        button_y = SCREEN_HEIGHT - 130
+        
+        # Restart button
+        restart_x = SCREEN_WIDTH // 2 - button_width - 20
+        self.restart_button_rect = pygame.Rect(restart_x, button_y, button_width, button_height)
+        is_restart_hovered = self.restart_button_rect.collidepoint(mouse_pos)
+        
+        self.game.ui_renderer.render_button(
+            screen, "RESTART",
+            restart_x, button_y, button_width, button_height,
+            is_restart_hovered
+        )
+        
+        # Main Menu button
+        menu_x = SCREEN_WIDTH // 2 + 20
+        self.gameover_menu_button_rect = pygame.Rect(menu_x, button_y, button_width, button_height)
+        is_menu_hovered = self.gameover_menu_button_rect.collidepoint(mouse_pos)
+        
+        self.game.ui_renderer.render_button(
+            screen, "MAIN MENU",
+            menu_x, button_y, button_width, button_height,
+            is_menu_hovered
+        )
+        
+        # Show space key hint
+        hint_font = pygame.font.Font(None, 22)
+        hint_text = hint_font.render("Press SPACE to restart", True, (150, 150, 150))
+        hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50))
+        screen.blit(hint_text, hint_rect)
     
     def _render_shield_effect(self, screen):
         """Render shield visual effect around player with glow and prominent outline."""
@@ -900,73 +1212,7 @@ class PlayState(BaseState):
         
         # Game over message
         if self.game_over:
-            # Semi-transparent overlay
-            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            overlay.fill((0, 0, 0))
-            overlay.set_alpha(180)
-            screen.blit(overlay, (0, 0))
-            
-            if self.is_new_high_score:
-                self.game.ui_renderer.render_title(screen, "NEW HIGH SCORE!")
-            else:
-                self.game.ui_renderer.render_title(screen, "GAME OVER")
-            
-            # Show final score
-            self.game.ui_renderer.render_centered_text(
-                screen,
-                f"Final Score: {self.score}",
-                SCREEN_HEIGHT // 2 - 20,
-                "medium"
-            )
-            
-            # Show rank if high score
-            if self.is_new_high_score:
-                rank = self.save_system.get_rank(self.score)
-                if rank:
-                    self.game.ui_renderer.render_centered_text(
-                        screen,
-                        f"Rank: #{rank}",
-                        SCREEN_HEIGHT // 2 + 20,
-                        "small",
-                        UI_ACCENT
-                    )
-            
-            # Get mouse position for hover detection
-            mouse_pos = pygame.mouse.get_pos()
-            
-            # Restart button
-            button_width = 200
-            button_height = 50
-            restart_x = SCREEN_WIDTH // 2 - button_width // 2
-            restart_y = SCREEN_HEIGHT // 2 + 60
-            self.restart_button_rect = pygame.Rect(restart_x, restart_y, button_width, button_height)
-            is_restart_hovered = self.restart_button_rect.collidepoint(mouse_pos)
-            
-            self.game.ui_renderer.render_button(
-                screen, "RESTART",
-                restart_x, restart_y, button_width, button_height,
-                is_restart_hovered
-            )
-            
-            # Main Menu button
-            menu_x = SCREEN_WIDTH // 2 - button_width // 2
-            menu_y = SCREEN_HEIGHT // 2 + 130
-            self.gameover_menu_button_rect = pygame.Rect(menu_x, menu_y, button_width, button_height)
-            is_menu_hovered = self.gameover_menu_button_rect.collidepoint(mouse_pos)
-            
-            self.game.ui_renderer.render_button(
-                screen, "MAIN MENU",
-                menu_x, menu_y, button_width, button_height,
-                is_menu_hovered
-            )
-            
-            # Show space key hint
-            self.game.ui_renderer.render_centered_text(
-                screen,
-                "Press SPACE to restart",
-                SCREEN_HEIGHT // 2 + 200,
-                "small"
-            )
+            self._render_game_over_screen(screen)
         
         # Pause menu
         if self.paused:

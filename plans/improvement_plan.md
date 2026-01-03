@@ -547,13 +547,11 @@ This document contains a comprehensive list of improvements and features to enha
 
 **Description:** Comprehensive stat tracking and visualization:
 
-* **Detailed Stats Screen**: View all-time statistics
-* **Run History**: List of recent runs with details
+* **Track all stats**: for each run, track how many of each platform was landed on (and by nature of that, how many total platforms), how many of each collectable was gathered, how many of each jump was used, what the highest multiplier reached was, etc. display these stats in an easily consumable way in the game over screen. also, save them permanently to go into an all-time statistics screen that is selectable from the main menu
+
+* **Detailed Stats Screen**: View all-time statistics (selectable from main menu)
+* **Run History**: List of recent runs with details. clicking/selecting one will let you see the full detail from that run, same as how it appeared on the game over screen when the run ended
 * **Progress Graphs**: Visual charts showing improvement over time
-* **Heatmaps**: Show where you die most often
-* **Platform Type Stats**: Performance on each platform type
-* **Time-of-Day Stats**: When you play best
-* **Comparison Tools**: Compare runs side-by-side
 
 **Files to create:**
 * `src/states/statistics_state.py` - Detailed statistics viewer
@@ -561,6 +559,8 @@ This document contains a comprehensive list of improvements and features to enha
 
 **Files to modify:**
 * `src/systems/save_system.py` - expanded stat tracking
+
+you might need to create/modify more files than this.
 
 ---
 

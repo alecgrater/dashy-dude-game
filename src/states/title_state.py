@@ -4,7 +4,6 @@ Title screen state with menu and animations.
 import pygame
 import math
 from src.states.base_state import BaseState
-from src.graphics.background import Background
 from src.utils.constants import *
 
 
@@ -21,14 +20,12 @@ class TitleState(BaseState):
             game: Reference to main Game instance
         """
         super().__init__(game)
-        # Get background colors from customization
-        background_colors = game.customization.get_background_colors()
-        self.background = Background(SCREEN_WIDTH, SCREEN_HEIGHT, background_colors)
         self.save_system = game.save_system
         self.animation_time = 0.0
         self.play_button_rect = None
         self.customize_button_rect = None
         self.achievements_button_rect = None
+        self.statistics_button_rect = None
         self.settings_button_rect = None
         self.quit_button_rect = None
         self.mouse_pos = (0, 0)
@@ -56,6 +53,8 @@ class TitleState(BaseState):
     def enter(self):
         """Called when entering this state."""
         self.animation_time = 0.0
+        # Start menu music
+        self.game.audio_manager.play_menu_music()
         print("Title screen loaded")
         print("Click 'Play' to start!")
     
@@ -71,9 +70,6 @@ class TitleState(BaseState):
             dt: Delta time in seconds
         """
         self.animation_time += dt
-        
-        # Update background
-        self.background.update(dt)
         
         # Animate title (bounce effect)
         self.title_bounce_offset = math.sin(self.animation_time * 2) * 10
@@ -95,14 +91,8 @@ class TitleState(BaseState):
         Args:
             screen: pygame.Surface to draw on
         """
-        # Render background with animated water
-        # Create a simple camera-like object for background rendering
-        class SimpleCamera:
-            def __init__(self):
-                self.position = pygame.math.Vector2(0, 0)
-        
-        camera = SimpleCamera()
-        self.background.render(screen, camera)
+        # Render gradient background instead of gameplay background
+        self._render_gradient_background(screen)
         
         # Render clouds
         self._render_clouds(screen)
@@ -119,6 +109,9 @@ class TitleState(BaseState):
         # Render achievements button
         self._render_achievements_button(screen)
         
+        # Render statistics button
+        self._render_statistics_button(screen)
+        
         # Render settings button
         self._render_settings_button(screen)
         
@@ -130,6 +123,38 @@ class TitleState(BaseState):
         
         # Render controls hint
         self._render_controls(screen)
+    
+    def _render_gradient_background(self, screen):
+        """Render a faded gradient background for title screen."""
+        # Create gradient from dark purple at top to dark blue at bottom
+        for y in range(SCREEN_HEIGHT):
+            # Calculate gradient progress (0 at top, 1 at bottom)
+            progress = y / SCREEN_HEIGHT
+            
+            # Interpolate between colors
+            # Top color: dark purple (40, 20, 60)
+            # Bottom color: dark blue (20, 30, 80)
+            r = int(40 + (20 - 40) * progress)
+            g = int(20 + (30 - 20) * progress)
+            b = int(60 + (80 - 60) * progress)
+            
+            # Draw horizontal line
+            pygame.draw.line(screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+        
+        # Add subtle vignette effect (darker at edges)
+        vignette = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        
+        # Draw radial gradient for vignette
+        center_x, center_y = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        max_dist = math.sqrt(center_x ** 2 + center_y ** 2)
+        
+        for y in range(0, SCREEN_HEIGHT, 4):  # Step by 4 for performance
+            for x in range(0, SCREEN_WIDTH, 4):
+                dist = math.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+                alpha = int((dist / max_dist) * 100)  # Max alpha of 100
+                pygame.draw.rect(vignette, (0, 0, 0, alpha), (x, y, 4, 4))
+        
+        screen.blit(vignette, (0, 0))
     
     def _render_clouds(self, screen):
         """Render decorative clouds."""
@@ -175,7 +200,12 @@ class TitleState(BaseState):
     def _render_play_button(self, screen):
         """Render play button with hover effect."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 - 120
+        # Calculate button positions with consistent spacing
+        # 6 buttons total, each 50px tall with 20px gap = 420px total
+        # Position below title with offset
+        button_spacing = 70  # Button height (50) + gap (20)
+        first_button_y = SCREEN_HEIGHT // 2 - (6 * button_spacing) // 2 + 80
+        button_y = first_button_y
         
         # Check if mouse is hovering
         self.play_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -203,7 +233,9 @@ class TitleState(BaseState):
     def _render_customize_button(self, screen):
         """Render customize button."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 - 50
+        button_spacing = 70
+        first_button_y = SCREEN_HEIGHT // 2 - (6 * button_spacing) // 2 + 80
+        button_y = first_button_y + button_spacing
         
         # Check if mouse is hovering
         self.customize_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -231,7 +263,9 @@ class TitleState(BaseState):
     def _render_achievements_button(self, screen):
         """Render achievements button."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 + 20
+        button_spacing = 70
+        first_button_y = SCREEN_HEIGHT // 2 - (6 * button_spacing) // 2 + 80
+        button_y = first_button_y + button_spacing * 2
         
         # Check if mouse is hovering
         self.achievements_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -256,10 +290,42 @@ class TitleState(BaseState):
             is_hovered
         )
     
+    def _render_statistics_button(self, screen):
+        """Render statistics button."""
+        button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
+        button_spacing = 70
+        first_button_y = SCREEN_HEIGHT // 2 - (6 * button_spacing) // 2 + 80
+        button_y = first_button_y + button_spacing * 3
+        
+        # Check if mouse is hovering
+        self.statistics_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
+        is_hovered = self.statistics_button_rect.collidepoint(self.mouse_pos)
+        
+        # Add pulse animation to button
+        pulse = 1.0 + math.sin(self.animation_time * 4) * 0.05 if is_hovered else 1.0
+        
+        # Draw button with scale
+        if pulse != 1.0:
+            scaled_width = int(BUTTON_WIDTH * pulse)
+            scaled_height = int(BUTTON_HEIGHT * pulse)
+            button_x = SCREEN_WIDTH // 2 - scaled_width // 2
+            button_y_adjusted = button_y + (BUTTON_HEIGHT - scaled_height) // 2
+            self.statistics_button_rect = pygame.Rect(button_x, button_y_adjusted, scaled_width, scaled_height)
+        
+        # Render button using UI renderer
+        self.game.ui_renderer.render_button(
+            screen, "STATISTICS",
+            self.statistics_button_rect.x, self.statistics_button_rect.y,
+            self.statistics_button_rect.width, self.statistics_button_rect.height,
+            is_hovered
+        )
+    
     def _render_settings_button(self, screen):
         """Render settings button."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 + 90
+        button_spacing = 70
+        first_button_y = SCREEN_HEIGHT // 2 - (6 * button_spacing) // 2 + 80
+        button_y = first_button_y + button_spacing * 4
         
         # Check if mouse is hovering
         self.settings_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -287,7 +353,9 @@ class TitleState(BaseState):
     def _render_quit_button(self, screen):
         """Render quit button."""
         button_x = SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2
-        button_y = SCREEN_HEIGHT // 2 + 160
+        button_spacing = 70
+        first_button_y = SCREEN_HEIGHT // 2 - (6 * button_spacing) // 2 + 80
+        button_y = first_button_y + button_spacing * 5
         
         # Check if mouse is hovering
         self.quit_button_rect = pygame.Rect(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
@@ -380,7 +448,6 @@ class TitleState(BaseState):
         """Render control instructions with epic styled box."""
         controls = [
             "SPACE - Jump / Double Jump / Helicopter Glide",
-            "Hold SPACE after double jump to activate helicopter",
             "ESC - Pause Game"
         ]
         
@@ -455,6 +522,9 @@ class TitleState(BaseState):
                 elif self.achievements_button_rect and self.achievements_button_rect.collidepoint(event.pos):
                     # Open achievements menu
                     self._open_achievements()
+                elif self.statistics_button_rect and self.statistics_button_rect.collidepoint(event.pos):
+                    # Open statistics menu
+                    self._open_statistics()
                 elif self.settings_button_rect and self.settings_button_rect.collidepoint(event.pos):
                     # Open settings menu
                     self._open_settings()
@@ -500,6 +570,18 @@ class TitleState(BaseState):
         if not hasattr(self.game, 'achievements_state'):
             self.game.achievements_state = AchievementsState(self.game)
         self.game.current_state = self.game.achievements_state
+        self.game.current_state.enter()
+    
+    def _open_statistics(self):
+        """Open statistics menu."""
+        print("Opening statistics menu...")
+        self.exit()
+        
+        # Switch to statistics state
+        from src.states.statistics_state import StatisticsState
+        if not hasattr(self.game, 'statistics_state'):
+            self.game.statistics_state = StatisticsState(self.game)
+        self.game.current_state = self.game.statistics_state
         self.game.current_state.enter()
     
     def _open_settings(self):

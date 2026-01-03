@@ -8,6 +8,7 @@ from src.systems.input import InputHandler
 from src.systems.customization import CustomizationSystem
 from src.systems.save_system import SaveSystem
 from src.systems.achievements import AchievementSystem
+from src.systems.audio import AudioManager
 from src.graphics.sprite_generator import SpriteGenerator
 from src.graphics.ui import UIRenderer
 from src.states.title_state import TitleState
@@ -75,6 +76,9 @@ class Game:
         
         # UI renderer
         self.ui_renderer = UIRenderer()
+        
+        # Global audio manager for menu music
+        self.audio_manager = AudioManager()
         
         # Game state
         self.current_state = None

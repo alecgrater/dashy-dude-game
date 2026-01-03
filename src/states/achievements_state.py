@@ -128,8 +128,8 @@ class AchievementsState(BaseState):
         # Clear screen with dark background
         screen.fill((20, 20, 30))
         
-        # Render title
-        self.game.ui_renderer.render_title(screen, "ACHIEVEMENTS")
+        # Render title (consistent style with other menus)
+        self._render_title(screen)
         
         # Get all achievements
         achievements = self.game.achievement_system.get_all_achievements()
@@ -209,6 +209,21 @@ class AchievementsState(BaseState):
         
         # Render fade overlay
         self.game.ui_renderer.render_fade(screen)
+    
+    def _render_title(self, screen):
+        """Render menu title with consistent style."""
+        font = pygame.font.Font(None, 64)
+        title_text = "ACHIEVEMENTS"
+        
+        # Shadow
+        shadow = font.render(title_text, True, (0, 0, 0))
+        shadow_rect = shadow.get_rect(center=(SCREEN_WIDTH // 2 + 3, 53))
+        screen.blit(shadow, shadow_rect)
+        
+        # Main text with accent color
+        text = font.render(title_text, True, UI_ACCENT)
+        text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, 50))
+        screen.blit(text, text_rect)
     
     def handle_event(self, event):
         """Handle events."""

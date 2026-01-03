@@ -40,7 +40,8 @@ class CustomizationState(BaseState):
     
     def _create_preview(self):
         """Create preview surface showing current theme."""
-        self.preview_surface = pygame.Surface((300, 200), pygame.SRCALPHA)
+        # Preview surface matches the inner area of the preview box
+        self.preview_surface = pygame.Surface((260, 200), pygame.SRCALPHA)
     
     def enter(self):
         """Called when entering this state."""
@@ -67,34 +68,44 @@ class CustomizationState(BaseState):
     
     def _update_preview(self):
         """Update the theme preview."""
+        preview_width = 260
+        preview_height = 200
         self.preview_surface.fill((0, 0, 0, 0))
         
         # Draw a simple preview based on selected category
         if self.selected_category == 0:  # Player
             colors = self.customization.get_player_colors()
-            # Draw simple player representation
+            # Draw simple player representation - centered in preview
+            player_width = 40
+            player_height = 50
+            player_x = (preview_width - player_width) // 2
+            player_y = (preview_height - player_height) // 2
             pygame.draw.rect(self.preview_surface, colors['primary'],
-                           (130, 80, 40, 50), border_radius=8)
-            pygame.draw.circle(self.preview_surface, colors['accent'], (145, 95), 5)
-            pygame.draw.circle(self.preview_surface, colors['accent'], (155, 95), 5)
+                           (player_x, player_y, player_width, player_height), border_radius=8)
+            # Eyes centered on player
+            pygame.draw.circle(self.preview_surface, colors['accent'], (player_x + 12, player_y + 15), 5)
+            pygame.draw.circle(self.preview_surface, colors['accent'], (player_x + 28, player_y + 15), 5)
         
         elif self.selected_category == 1:  # Platform
             colors = self.customization.get_platform_colors()
-            # Draw platform
-            pygame.draw.rect(self.preview_surface, colors['top'], (50, 150, 200, 8))
-            pygame.draw.rect(self.preview_surface, colors['base'], (50, 158, 200, 32))
+            # Draw platform - centered in preview
+            platform_width = 180
+            platform_x = (preview_width - platform_width) // 2
+            platform_y = (preview_height - 40) // 2  # Center vertically
+            pygame.draw.rect(self.preview_surface, colors['top'], (platform_x, platform_y, platform_width, 8))
+            pygame.draw.rect(self.preview_surface, colors['base'], (platform_x, platform_y + 8, platform_width, 32))
         
         elif self.selected_category == 2:  # Background
             colors = self.customization.get_background_colors()
-            # Draw gradient
-            for y in range(200):
-                ratio = y / 200
+            # Draw gradient - fill entire preview surface
+            for y in range(preview_height):
+                ratio = y / preview_height
                 color = (
                     int(colors['sky_top'][0] + (colors['sky_bottom'][0] - colors['sky_top'][0]) * ratio),
                     int(colors['sky_top'][1] + (colors['sky_bottom'][1] - colors['sky_top'][1]) * ratio),
                     int(colors['sky_top'][2] + (colors['sky_bottom'][2] - colors['sky_top'][2]) * ratio),
                 )
-                pygame.draw.line(self.preview_surface, color, (0, y), (300, y))
+                pygame.draw.line(self.preview_surface, color, (0, y), (preview_width, y))
     
     def render(self, screen):
         """
@@ -141,11 +152,13 @@ class CustomizationState(BaseState):
         self.category_buttons = []
         tab_width = 150
         tab_height = 50
-        start_x = SCREEN_WIDTH // 2 - (len(self.categories) * tab_width) // 2
+        tab_spacing = 20  # Spacing between tabs
+        total_width = len(self.categories) * tab_width + (len(self.categories) - 1) * tab_spacing
+        start_x = SCREEN_WIDTH // 2 - total_width // 2
         y = 120
         
         for i, category in enumerate(self.categories):
-            x = start_x + i * tab_width
+            x = start_x + i * (tab_width + tab_spacing)
             rect = pygame.Rect(x, y, tab_width, tab_height)
             self.category_buttons.append(rect)
             
@@ -181,12 +194,12 @@ class CustomizationState(BaseState):
             themes = list(BackgroundTheme)
             current_theme = self.customization.background_theme
         
-        # Layout themes in grid
-        cols = 3
-        button_width = 180
+        # Layout themes in grid - positioned on left side with padding from preview
+        cols = 2  # Reduced to 2 columns for better spacing
+        button_width = 160
         button_height = 60
-        spacing = 20
-        start_x = SCREEN_WIDTH // 2 - (cols * button_width + (cols - 1) * spacing) // 2
+        spacing = 15
+        start_x = 40  # Fixed left margin
         start_y = 200
         
         font = pygame.font.Font(None, 28)
@@ -243,22 +256,27 @@ class CustomizationState(BaseState):
     
     def _render_preview(self, screen):
         """Render theme preview."""
-        preview_x = SCREEN_WIDTH - 350
-        preview_y = 200
+        # Position preview on right side with proper padding
+        preview_box_width = 280
+        preview_box_height = 230
+        preview_x = SCREEN_WIDTH - preview_box_width - 40  # 40px right margin
+        preview_y = 230  # Below title
+        
+        # Preview title above box
+        font = pygame.font.Font(None, 32)
+        title = font.render("Preview", True, UI_TEXT)
+        title_rect = title.get_rect(centerx=preview_x + preview_box_width // 2, bottom=preview_y - 10)
+        screen.blit(title, title_rect)
         
         # Preview box
-        preview_rect = pygame.Rect(preview_x, preview_y, 320, 220)
+        preview_rect = pygame.Rect(preview_x, preview_y, preview_box_width, preview_box_height)
         pygame.draw.rect(screen, UI_SECONDARY, preview_rect, border_radius=12)
         pygame.draw.rect(screen, UI_TEXT, preview_rect, 2, border_radius=12)
         
-        # Title
-        font = pygame.font.Font(None, 32)
-        title = font.render("Preview", True, UI_TEXT)
-        title_rect = title.get_rect(center=(preview_rect.centerx, preview_y - 20))
-        screen.blit(title, title_rect)
-        
-        # Preview surface
-        screen.blit(self.preview_surface, (preview_x + 10, preview_y + 10))
+        # Preview surface - centered inside the box with padding
+        surface_x = preview_x + (preview_box_width - 260) // 2
+        surface_y = preview_y + (preview_box_height - 200) // 2
+        screen.blit(self.preview_surface, (surface_x, surface_y))
     
     def _render_back_button(self, screen):
         """Render back button."""
@@ -331,10 +349,11 @@ class CustomizationState(BaseState):
         # Regenerate sprites
         self.game.sprites = self.game.sprite_generator.generate_all_sprites()
         
-        # Update background colors
+        # Update background colors if title_state has a background attribute
         background_colors = self.customization.get_background_colors()
         if hasattr(self.game, 'title_state') and self.game.title_state:
-            self.game.title_state.background.set_colors(background_colors)
+            if hasattr(self.game.title_state, 'background') and self.game.title_state.background:
+                self.game.title_state.background.set_colors(background_colors)
     
     def _go_back(self):
         """Return to title screen."""
