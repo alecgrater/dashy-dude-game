@@ -89,55 +89,59 @@ class Game:
         self.current_state = self.title_state
         self.current_state.enter()
     
-    def run(self):
+    async def run(self):
         """
-        Main game loop with fixed timestep.
+        Main game loop with fixed timestep (async for web compatibility).
         """
         accumulator = 0.0
         current_time = time.time()
-        
+
         print("Game loop starting...")
         print("Controls: SPACE to jump/double jump/helicopter glide")
         print("Hold SPACE after double jump to activate helicopter!")
-        
+
         while self.running:
             # Calculate frame time
             new_time = time.time()
             frame_time = new_time - current_time
             current_time = new_time
-            
+
             # Cap frame time to prevent spiral of death
             if frame_time > 0.25:
                 frame_time = 0.25
-            
+
             accumulator += frame_time
-            
+
             # Handle events
             self.handle_events()
-            
+
             # Update input
             self.input_handler.update()
-            
+
             # Fixed timestep updates
             while accumulator >= self.dt:
                 self.update(self.dt)
                 accumulator -= self.dt
-            
+
             # Render
             self.render()
-            
+
             # Cap frame rate with optional VSync
             if self.settings.get('vsync', True):
                 self.clock.tick(FPS)
             else:
                 self.clock.tick()
-            
+
             # Track frame time for FPS counter
             if self.settings.get('show_fps', False):
                 self.frame_times.append(frame_time)
                 if len(self.frame_times) > self.max_frame_samples:
                     self.frame_times.pop(0)
-        
+
+            # Yield control to browser (critical for web)
+            import asyncio
+            await asyncio.sleep(0)
+
         # Cleanup
         pygame.quit()
     
