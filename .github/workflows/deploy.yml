@@ -34,7 +34,133 @@ jobs:
 
     - name: Build game with pygbag
       run: |
-        python -m pygbag --build --template index.html .
+        python -m pygbag --build .
+
+    - name: Inject Firebase configuration
+      run: |
+        cat > /tmp/firebase-inject.html << 'FIREBASE_EOF'
+
+        <!-- Firebase Integration -->
+        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+        <script>
+            // Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyAGCeQ-kAt5xXTQwJr2f7xenZ-t3urfGN8",
+                authDomain: "dashy-dude-game.firebaseapp.com",
+                databaseURL: "https://dashy-dude-game-default-rtdb.firebaseio.com",
+                projectId: "dashy-dude-game",
+                storageBucket: "dashy-dude-game.firebasestorage.app",
+                messagingSenderId: "18111768754",
+                appId: "1:18111768754:web:ca276edf2c9d27b2e241ab"
+            };
+
+            // Initialize Firebase
+            let firebaseInitialized = false;
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+                try {
+                    firebase.initializeApp(firebaseConfig);
+                    window.firebaseDB = firebase.database();
+                    firebaseInitialized = true;
+                    console.log("Firebase initialized successfully");
+                } catch (error) {
+                    console.error("Firebase initialization failed:", error);
+                    window.firebaseDB = null;
+                }
+            } else {
+                console.log("Firebase not configured - using local storage only");
+                window.firebaseDB = null;
+            }
+
+            // Helper functions for Python to call via Pygbag
+            window.dashyDude = {
+                isFirebaseAvailable: function() {
+                    return firebaseInitialized && window.firebaseDB !== null;
+                },
+
+                saveHighScore: async function(scoreData) {
+                    if (!firebaseInitialized) {
+                        console.log("Firebase not available, skipping cloud save");
+                        return false;
+                    }
+
+                    try {
+                        const scoresRef = window.firebaseDB.ref('high_scores');
+                        const newScoreRef = scoresRef.push();
+                        await newScoreRef.set({
+                            score: scoreData.score,
+                            name: scoreData.name || "Player",
+                            date: scoreData.date,
+                            stats: scoreData.stats || {},
+                            timestamp: firebase.database.ServerValue.TIMESTAMP
+                        });
+                        console.log("High score saved to Firebase:", scoreData.score);
+                        return true;
+                    } catch (error) {
+                        console.error("Error saving to Firebase:", error);
+                        return false;
+                    }
+                },
+
+                getTopScores: async function(limit = 10) {
+                    if (!firebaseInitialized) {
+                        console.log("Firebase not available");
+                        return [];
+                    }
+
+                    try {
+                        const scoresRef = window.firebaseDB.ref('high_scores');
+                        const snapshot = await scoresRef.orderByChild('score')
+                            .limitToLast(limit * 2)
+                            .once('value');
+
+                        const scores = [];
+                        snapshot.forEach(function(childSnapshot) {
+                            scores.push(childSnapshot.val());
+                        });
+
+                        scores.sort((a, b) => b.score - a.score);
+                        return scores.slice(0, limit);
+                    } catch (error) {
+                        console.error("Error fetching from Firebase:", error);
+                        return [];
+                    }
+                },
+
+                cleanupOldScores: async function() {
+                    if (!firebaseInitialized) return;
+
+                    try {
+                        const scoresRef = window.firebaseDB.ref('high_scores');
+                        const snapshot = await scoresRef.once('value');
+
+                        const scores = [];
+                        snapshot.forEach(function(childSnapshot) {
+                            scores.push({
+                                key: childSnapshot.key,
+                                score: childSnapshot.val().score
+                            });
+                        });
+
+                        scores.sort((a, b) => b.score - a.score);
+                        const toDelete = scores.slice(100);
+
+                        for (const item of toDelete) {
+                            await scoresRef.child(item.key).remove();
+                        }
+
+                        console.log("Cleaned up", toDelete.length, "old scores");
+                    } catch (error) {
+                        console.error("Error cleaning up scores:", error);
+                    }
+                }
+            };
+        </script>
+        FIREBASE_EOF
+
+        # Inject Firebase code before </body> tag in the generated index.html
+        sed -i.bak '/<\/body>/i\
+        '"$(cat /tmp/firebase-inject.html)"'' build/web/index.html
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
