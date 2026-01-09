@@ -20,12 +20,31 @@ class Game:
     """
     
     def __init__(self):
+        print("Starting game initialization...")
+
         # Initialize Pygame
         pygame.init()
+        print("Pygame initialized")
 
-        # Create window
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        # Detect platform
+        import sys
+        import platform
+        is_web = sys.platform == "emscripten"
+        print(f"Platform: {sys.platform}, Is web: {is_web}")
+
+        # Create window - use different flags for web
+        print(f"Creating display: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
+        if is_web:
+            # For web, use SCALED flag for better compatibility
+            self.screen = pygame.display.set_mode(
+                (SCREEN_WIDTH, SCREEN_HEIGHT),
+                pygame.SCALED | pygame.DOUBLEBUF
+            )
+        else:
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
         pygame.display.set_caption("Dashy Dude")
+        print("Display created successfully")
 
         # Clock for frame rate
         self.clock = pygame.time.Clock()
@@ -50,6 +69,8 @@ class Game:
             self.customization = CustomizationSystem()
         except Exception as e:
             print(f"Error loading systems: {e}")
+            import traceback
+            traceback.print_exc()
             # Use defaults
             self.save_system = SaveSystem()
             self.achievement_system = AchievementSystem()
@@ -83,6 +104,8 @@ class Game:
             print("Sprites generated!")
         except Exception as e:
             print(f"Error generating sprites: {e}")
+            import traceback
+            traceback.print_exc()
             # Use basic sprite generator with default colors
             self.sprite_generator = SpriteGenerator()
             self.sprites = self.sprite_generator.generate_all_sprites()
@@ -96,6 +119,8 @@ class Game:
             self.audio_manager = AudioManager()
         except Exception as e:
             print(f"Audio initialization failed: {e}")
+            import traceback
+            traceback.print_exc()
             # Create a dummy audio manager
             class DummyAudioManager:
                 def __init__(self):
@@ -120,10 +145,18 @@ class Game:
 
         # Initialize title state
         print("Initializing title state...")
-        self.title_state = TitleState(self)
-        self.current_state = self.title_state
-        self.current_state.enter()
-        print("Game initialized successfully!")
+        try:
+            self.title_state = TitleState(self)
+            self.current_state = self.title_state
+            self.current_state.enter()
+            print("Title state initialized")
+        except Exception as e:
+            print(f"Error initializing title state: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
+
+        print("=== Game initialized successfully! ===")
     
     async def run(self):
         """
