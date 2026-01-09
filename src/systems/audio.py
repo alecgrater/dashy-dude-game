@@ -3,10 +3,22 @@ Audio system with procedural sound generation.
 Uses pygame.mixer for audio playback and numpy for sound synthesis.
 """
 import pygame
-import numpy as np
 import os
 import random
 from src.utils.constants import *
+
+# Try to import numpy - might not be available or might fail in web
+try:
+    import numpy as np
+    import pygame.sndarray
+    NUMPY_AVAILABLE = True
+    print("NumPy imported successfully for audio")
+except ImportError as e:
+    print(f"NumPy not available: {e}")
+    NUMPY_AVAILABLE = False
+except Exception as e:
+    print(f"Error importing NumPy: {e}")
+    NUMPY_AVAILABLE = False
 
 
 class AudioManager:
@@ -22,6 +34,12 @@ class AudioManager:
         self.music_playing = False
         self.menu_music_playing = False
         self.current_song = None
+
+        # Check if numpy is available
+        if not NUMPY_AVAILABLE:
+            print("NumPy not available - audio will be disabled")
+            self.enabled = False
+            return
 
         try:
             # Detect web environment
