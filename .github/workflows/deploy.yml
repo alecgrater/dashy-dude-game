@@ -38,8 +38,15 @@ jobs:
 
     - name: Inject Firebase configuration
       run: |
-        cat > /tmp/firebase-inject.html << 'FIREBASE_EOF'
+        python3 << 'PYTHON_EOF'
+        import re
 
+        # Read the generated HTML
+        with open('build/web/index.html', 'r') as f:
+            html = f.read()
+
+        # Firebase integration code
+        firebase_code = '''
         <!-- Firebase Integration -->
         <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -156,11 +163,17 @@ jobs:
                 }
             };
         </script>
-        FIREBASE_EOF
+        '''
 
-        # Inject Firebase code before </body> tag in the generated index.html
-        sed -i.bak '/<\/body>/i\
-        '"$(cat /tmp/firebase-inject.html)"'' build/web/index.html
+        # Inject before closing </body> tag
+        html = html.replace('</body>', firebase_code + '\n</body>')
+
+        # Write back
+        with open('build/web/index.html', 'w') as f:
+            f.write(html)
+
+        print("Firebase configuration injected successfully")
+        PYTHON_EOF
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
