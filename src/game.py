@@ -22,32 +22,39 @@ class Game:
     def __init__(self):
         # Initialize Pygame
         pygame.init()
-        
+
         # Create window
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Dashy Dude")
-        
+
         # Clock for frame rate
         self.clock = pygame.time.Clock()
         self.running = True
-        
+
         # Performance tracking
         self.fps_font = pygame.font.Font(None, 24)
         self.frame_times = []
         self.max_frame_samples = 60
-        
+
         # Fixed timestep
         self.dt = FIXED_DT
-        
+
         # Input handler
         self.input_handler = InputHandler()
-        
+
         # Initialize save system, achievements, and customization
         print("Loading save data...")
-        self.save_system = SaveSystem()
-        self.achievement_system = AchievementSystem()
-        self.customization = CustomizationSystem()
-        
+        try:
+            self.save_system = SaveSystem()
+            self.achievement_system = AchievementSystem()
+            self.customization = CustomizationSystem()
+        except Exception as e:
+            print(f"Error loading systems: {e}")
+            # Use defaults
+            self.save_system = SaveSystem()
+            self.achievement_system = AchievementSystem()
+            self.customization = CustomizationSystem()
+
         # Load settings
         self.settings = self.save_system.get_settings()
         if not self.settings:
@@ -55,39 +62,68 @@ class Game:
                 'show_fps': False,
                 'vsync': True,
             }
-        
+
         # Load saved customization preferences
         saved_customization = self.save_system.get_customization()
         if saved_customization:
             self.customization.from_dict(saved_customization)
-        
+
         # Set high score for unlock checking
         self.customization.set_high_score(self.save_system.get_high_score())
-        
+
         # Get colors from customization
         player_colors = self.customization.get_player_colors()
         platform_colors = self.customization.get_platform_colors()
-        
+
         # Generate sprites with custom colors
         print("Generating sprites...")
-        self.sprite_generator = SpriteGenerator(player_colors, platform_colors)
-        self.sprites = self.sprite_generator.generate_all_sprites()
-        print("Sprites generated!")
-        
+        try:
+            self.sprite_generator = SpriteGenerator(player_colors, platform_colors)
+            self.sprites = self.sprite_generator.generate_all_sprites()
+            print("Sprites generated!")
+        except Exception as e:
+            print(f"Error generating sprites: {e}")
+            # Use basic sprite generator with default colors
+            self.sprite_generator = SpriteGenerator()
+            self.sprites = self.sprite_generator.generate_all_sprites()
+
         # UI renderer
         self.ui_renderer = UIRenderer()
-        
+
         # Global audio manager for menu music
-        self.audio_manager = AudioManager()
-        
+        print("Initializing audio...")
+        try:
+            self.audio_manager = AudioManager()
+        except Exception as e:
+            print(f"Audio initialization failed: {e}")
+            # Create a dummy audio manager
+            class DummyAudioManager:
+                def __init__(self):
+                    self.enabled = False
+                def play_sound(self, *args, **kwargs):
+                    pass
+                def stop_sound(self, *args, **kwargs):
+                    pass
+                def play_music(self, *args, **kwargs):
+                    pass
+                def stop_music(self, *args, **kwargs):
+                    pass
+                def play_menu_music(self, *args, **kwargs):
+                    pass
+                def stop_menu_music(self, *args, **kwargs):
+                    pass
+            self.audio_manager = DummyAudioManager()
+
         # Game state
         self.current_state = None
         self.play_state = None
-        
+
         # Initialize title state
+        print("Initializing title state...")
         self.title_state = TitleState(self)
         self.current_state = self.title_state
         self.current_state.enter()
+        print("Game initialized successfully!")
     
     async def run(self):
         """

@@ -17,29 +17,38 @@ class AudioManager:
     
     def __init__(self):
         """Initialize audio system."""
-        # Initialize pygame mixer
-        pygame.mixer.init(
-            frequency=AUDIO_SAMPLE_RATE,
-            size=-16,  # 16-bit signed
-            channels=AUDIO_CHANNELS,
-            buffer=AUDIO_BUFFER_SIZE
-        )
-        
-        # Set master volume
-        pygame.mixer.music.set_volume(AUDIO_VOLUME * 0.5)  # Music quieter
-        
-        # Sound cache
+        self.enabled = True
         self.sounds = {}
-        
-        # Generate all sounds
-        self._generate_sounds()
-        
-        # Music state
         self.music_playing = False
         self.menu_music_playing = False
         self.current_song = None
-        
-        print("Audio system initialized")
+
+        try:
+            # Detect web environment
+            import sys
+            is_web = sys.platform == "emscripten"
+
+            if is_web:
+                print("Running in web environment - audio support limited")
+
+            # Initialize pygame mixer
+            pygame.mixer.init(
+                frequency=AUDIO_SAMPLE_RATE,
+                size=-16,  # 16-bit signed
+                channels=AUDIO_CHANNELS,
+                buffer=AUDIO_BUFFER_SIZE
+            )
+
+            # Set master volume
+            pygame.mixer.music.set_volume(AUDIO_VOLUME * 0.5)  # Music quieter
+
+            # Generate all sounds
+            self._generate_sounds()
+
+            print("Audio system initialized")
+        except Exception as e:
+            print(f"Audio initialization failed (non-fatal): {e}")
+            self.enabled = False
     
     def _generate_sounds(self):
         """Generate all procedural sound effects."""
@@ -70,16 +79,22 @@ class AudioManager:
         )
         
         self.sounds['revive'] = self._generate_revive_sound()
-        
+
         # Load speed boost sound from file
-        self.sounds['speed_boost'] = pygame.mixer.Sound('assets/sounds/speed_boost.wav')
-        self.sounds['speed_boost'].set_volume(0.10)  # Play at 10% volume
-        print("Loaded speed boost sound from assets/sounds/speed_boost.wav")
-        
+        try:
+            self.sounds['speed_boost'] = pygame.mixer.Sound('assets/sounds/speed_boost.wav')
+            self.sounds['speed_boost'].set_volume(0.10)  # Play at 10% volume
+            print("Loaded speed boost sound from assets/sounds/speed_boost.wav")
+        except Exception as e:
+            print(f"Could not load speed_boost.wav: {e}")
+
         # Load base multiplier sound from file
-        self.sounds['multiplier_base'] = pygame.mixer.Sound('assets/sounds/multiplier.wav')
-        print("Loaded multiplier sound from assets/sounds/multiplier.wav")
-        
+        try:
+            self.sounds['multiplier_base'] = pygame.mixer.Sound('assets/sounds/multiplier.wav')
+            print("Loaded multiplier sound from assets/sounds/multiplier.wav")
+        except Exception as e:
+            print(f"Could not load multiplier.wav: {e}")
+
         # Generate combo timeout sound (sad/deflating sound)
         self.sounds['combo_timeout'] = self._generate_combo_timeout_sound()
     
@@ -346,24 +361,30 @@ class AudioManager:
     def play_sound(self, sound_name, loop=False):
         """
         Play a sound effect.
-        
+
         Args:
             sound_name: Name of the sound to play ('jump', 'double_jump', etc.)
             loop: If True, loop the sound indefinitely (for helicopter, speed_boost)
         """
+        if not self.enabled:
+            return
+
         if sound_name in self.sounds:
-            if loop:
-                # Use channel 1 for looping helicopter sound
-                # Use channel 2 for looping speed boost sound
-                if sound_name == 'helicopter':
-                    channel = pygame.mixer.Channel(1)
-                elif sound_name == 'speed_boost':
-                    channel = pygame.mixer.Channel(2)
+            try:
+                if loop:
+                    # Use channel 1 for looping helicopter sound
+                    # Use channel 2 for looping speed boost sound
+                    if sound_name == 'helicopter':
+                        channel = pygame.mixer.Channel(1)
+                    elif sound_name == 'speed_boost':
+                        channel = pygame.mixer.Channel(2)
+                    else:
+                        channel = pygame.mixer.Channel(1)
+                    channel.play(self.sounds[sound_name], loops=-1)
                 else:
-                    channel = pygame.mixer.Channel(1)
-                channel.play(self.sounds[sound_name], loops=-1)
-            else:
-                self.sounds[sound_name].play()
+                    self.sounds[sound_name].play()
+            except Exception as e:
+                print(f"Error playing sound {sound_name}: {e}")
     
     def stop_sound(self, sound_name):
         """
