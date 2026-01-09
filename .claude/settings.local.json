@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(python -m pygbag:*)",
+      "Bash(python -c:*)",
+      "Bash(uv pip list:*)",
+      "Bash(ls:*)",
+      "Bash(uv run python:*)",
+      "Bash(python3 -m py_compile:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

@@ -7,11 +7,18 @@ A polished endless runner platformer game featuring helicopter glide mechanics. 
 
 ## Quick Start
 
-### Requirements
+### Play Online
+Play the game directly in your browser at: `https://YOUR_USERNAME.github.io/dashy-dude-game/`
+
+*(Replace YOUR_USERNAME with your GitHub username once deployed)*
+
+### Play Locally
+
+#### Requirements
 - Python 3.13.1+
 - uv (Python package manager)
 
-### Installation & Run
+#### Installation & Run
 ```bash
 # Install dependencies
 uv sync
@@ -123,6 +130,21 @@ See the [`plans/`](plans/) directory for detailed architecture documentation:
 - [`system_diagram.md`](plans/system_diagram.md) - Visual architecture diagrams
 - [`implementation_guide.md`](plans/implementation_guide.md) - Implementation details
 - [`quick_reference.md`](plans/quick_reference.md) - Quick reference guide
+
+## Web Deployment
+
+This game can be played in a web browser using GitHub Pages. See [`WEB_DEPLOYMENT.md`](WEB_DEPLOYMENT.md) for detailed setup instructions.
+
+**Quick Setup:**
+1. Fork/clone this repository
+2. Enable GitHub Pages in repository settings (Source: GitHub Actions)
+3. (Optional) Configure Firebase for global high scores
+4. Push to main branch - the game auto-deploys via GitHub Actions
+
+The web version uses:
+- **Pygbag** to compile Python/Pygame to WebAssembly
+- **localStorage** for local score persistence
+- **Firebase** (optional) for global leaderboards
 
 ## License
 

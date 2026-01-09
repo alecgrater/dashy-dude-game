@@ -60,6 +60,12 @@ class PlayState(BaseState):
         self.menu_button_rect = None
         self.restart_button_rect = None
         self.gameover_menu_button_rect = None
+
+        # Name input for high scores
+        self.awaiting_name_input = False
+        self.player_name = ""
+        self.name_input_cursor_visible = True
+        self.name_input_cursor_timer = 0.0
         
         # Statistics tracking - use RunStatistics for detailed tracking
         self.run_stats = RunStatistics()
@@ -152,6 +158,12 @@ class PlayState(BaseState):
         self.score = 0
         self.game_over = False
         self.is_new_high_score = False
+
+        # Reset name input state
+        self.awaiting_name_input = False
+        self.player_name = ""
+        self.name_input_cursor_visible = True
+        self.name_input_cursor_timer = 0.0
         
         # Load cumulative stats from previous runs
         previous_total_platforms = self.stats.get('total_platforms_landed', 0)
@@ -207,6 +219,14 @@ class PlayState(BaseState):
         # Update UI animations
         self.game.ui_renderer.update_fade(dt)
         self.game.ui_renderer.update_score_popups(dt)
+
+        # Update name input cursor blink
+        if self.awaiting_name_input:
+            self.name_input_cursor_timer += dt
+            if self.name_input_cursor_timer >= 0.5:
+                self.name_input_cursor_visible = not self.name_input_cursor_visible
+                self.name_input_cursor_timer = 0.0
+            return  # Don't update game while waiting for name input
         
         # Track combo before update to detect resets
         old_combo_count = self.game.ui_renderer.combo_count
@@ -672,26 +692,45 @@ class PlayState(BaseState):
             self.particles.emit_double_jump_boost(collectible.position.x, collectible.position.y)
     
     def _handle_game_over(self):
-        """Handle game over - check for high score and save."""
+        """Handle game over - check for high score and potentially ask for name."""
         # Finalize run statistics
         self.run_stats.score = self.score
         self.run_stats.timestamp = datetime.now().isoformat()
-        
+
         # Check if this is a new high score
         self.is_new_high_score = self.save_system.is_high_score(self.score)
-        
-        # Save the score to high scores if it qualifies
+
+        # If high score, wait for name input
         if self.is_new_high_score:
-            self.save_system.add_score(self.score, stats=self.stats)
+            self.awaiting_name_input = True
+            self.player_name = ""
             rank = self.save_system.get_rank(self.score)
             if rank:
-                print(f"New High Score! Rank #{rank}")
-        
-        # Always save run to history and update all-time stats
-        self.save_system.add_run(self.run_stats.to_dict())
-        
+                print(f"New High Score! Rank #{rank} - Enter your name")
+        else:
+            # Not a high score, save run history immediately
+            self.save_system.add_run(self.run_stats.to_dict())
+
         # Calculate max scroll for game over screen
         self._calculate_gameover_scroll()
+
+    def _save_high_score_with_name(self):
+        """Save the high score with the player's entered name."""
+        if not self.player_name.strip():
+            self.player_name = "Player"  # Default if empty
+
+        # Save the score to high scores with name
+        self.save_system.add_score(self.score, name=self.player_name, stats=self.stats)
+
+        # Save run to history
+        self.save_system.add_run(self.run_stats.to_dict())
+
+        # Clear the input state
+        self.awaiting_name_input = False
+
+        rank = self.save_system.get_rank(self.score)
+        if rank:
+            print(f"Saved! Rank #{rank} - {self.player_name}: {self.score}")
     
     def _calculate_gameover_scroll(self):
         """Calculate the maximum scroll offset for game over screen."""
@@ -730,12 +769,85 @@ class PlayState(BaseState):
                 pygame.draw.rect(vignette, (0, 0, 0, alpha), (x, y, 4, 4))
         
         screen.blit(vignette, (0, 0))
-    
+
+    def _render_name_input_dialog(self, screen):
+        """Render name input dialog for high scores."""
+        # Title
+        title_font = pygame.font.Font(None, 72)
+        title_text = "NEW HIGH SCORE!"
+        title_color = (255, 215, 0)  # Gold
+
+        # Render title shadow
+        shadow_surface = title_font.render(title_text, True, (0, 0, 0))
+        shadow_rect = shadow_surface.get_rect(center=(SCREEN_WIDTH // 2 + 3, 150 + 3))
+        screen.blit(shadow_surface, shadow_rect)
+
+        # Render title
+        title_surface = title_font.render(title_text, True, title_color)
+        title_rect = title_surface.get_rect(center=(SCREEN_WIDTH // 2, 150))
+        screen.blit(title_surface, title_rect)
+
+        # Score display
+        score_font = pygame.font.Font(None, 48)
+        score_text = f"Score: {self.score}"
+        score_surface = score_font.render(score_text, True, UI_ACCENT)
+        score_rect = score_surface.get_rect(center=(SCREEN_WIDTH // 2, 230))
+        screen.blit(score_surface, score_rect)
+
+        # Rank display
+        rank = self.save_system.get_rank(self.score)
+        if rank:
+            rank_font = pygame.font.Font(None, 36)
+            rank_text = f"Rank: #{rank}"
+            rank_surface = rank_font.render(rank_text, True, (255, 215, 0))
+            rank_rect = rank_surface.get_rect(center=(SCREEN_WIDTH // 2, 280))
+            screen.blit(rank_surface, rank_rect)
+
+        # Instruction text
+        instruction_font = pygame.font.Font(None, 32)
+        instruction_text = "Enter your name:"
+        instruction_surface = instruction_font.render(instruction_text, True, UI_TEXT)
+        instruction_rect = instruction_surface.get_rect(center=(SCREEN_WIDTH // 2, 340))
+        screen.blit(instruction_surface, instruction_rect)
+
+        # Name input box
+        box_width = 400
+        box_height = 60
+        box_x = SCREEN_WIDTH // 2 - box_width // 2
+        box_y = 380
+
+        # Draw input box background
+        pygame.draw.rect(screen, (40, 40, 60), (box_x, box_y, box_width, box_height), border_radius=5)
+        # Draw input box border
+        pygame.draw.rect(screen, UI_ACCENT, (box_x, box_y, box_width, box_height), 3, border_radius=5)
+
+        # Render name text with cursor
+        name_font = pygame.font.Font(None, 42)
+        display_name = self.player_name
+        if self.name_input_cursor_visible:
+            display_name += "|"
+
+        name_surface = name_font.render(display_name, True, UI_TEXT)
+        name_rect = name_surface.get_rect(center=(SCREEN_WIDTH // 2, box_y + box_height // 2))
+        screen.blit(name_surface, name_rect)
+
+        # Hint text
+        hint_font = pygame.font.Font(None, 24)
+        hint_text = "Press ENTER to confirm (max 12 characters)"
+        hint_surface = hint_font.render(hint_text, True, (150, 150, 150))
+        hint_rect = hint_surface.get_rect(center=(SCREEN_WIDTH // 2, 470))
+        screen.blit(hint_surface, hint_rect)
+
     def _render_game_over_screen(self, screen):
         """Render comprehensive game over screen with detailed statistics."""
         # Draw gradient background instead of last frame
         self._render_gradient_background(screen)
-        
+
+        # If awaiting name input, show name entry dialog
+        if self.awaiting_name_input:
+            self._render_name_input_dialog(screen)
+            return
+
         # Title at top center
         title_font = pygame.font.Font(None, 72)
         if self.is_new_high_score:
@@ -1260,6 +1372,24 @@ class PlayState(BaseState):
     def handle_event(self, event):
         """Handle events."""
         if event.type == pygame.KEYDOWN:
+            # Handle name input
+            if self.awaiting_name_input:
+                if event.key == pygame.K_RETURN:
+                    # Confirm name and save score
+                    self._save_high_score_with_name()
+                elif event.key == pygame.K_BACKSPACE:
+                    # Delete last character
+                    self.player_name = self.player_name[:-1]
+                elif event.key == pygame.K_ESCAPE:
+                    # Skip name entry, use default
+                    self.player_name = "Player"
+                    self._save_high_score_with_name()
+                elif len(self.player_name) < 12:  # Max 12 characters
+                    # Add character (alphanumeric and spaces only)
+                    if event.unicode.isprintable() and (event.unicode.isalnum() or event.unicode == ' '):
+                        self.player_name += event.unicode
+                return  # Don't handle other events while entering name
+
             # Handle pause
             if event.key == pygame.K_ESCAPE and not self.game_over:
                 self.paused = not self.paused
@@ -1269,7 +1399,7 @@ class PlayState(BaseState):
                 else:
                     # Resume music
                     self.audio.resume_music()
-            
+
             # Handle game over
             if self.game_over:
                 if event.key == pygame.K_SPACE:
@@ -1278,6 +1408,10 @@ class PlayState(BaseState):
         
         # Handle button clicks
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # Ignore mouse clicks while entering name
+            if self.awaiting_name_input:
+                return
+
             # Pause menu buttons
             if self.paused:
                 if self.resume_button_rect and self.resume_button_rect.collidepoint(event.pos):

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashy Dude - Endless Runner Game</title>
+    <meta name="description" content="A polished endless runner platformer game featuring helicopter glide mechanics. Play in your browser!">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: white;
+        }
+
+        #header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tagline {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-top: 10px;
+        }
+
+        #game-container {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        #loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #controls {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            max-width: 600px;
+        }
+
+        .control-item {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .key {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 0 5px;
+        }
+
+        #footer {
+            margin-top: 30px;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🎮 Dashy Dude</h1>
+        <div class="tagline">Endless Runner with Helicopter Glide Mechanics</div>
+    </div>
+
+    <div id="game-container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Loading game...</p>
+            <p style="font-size: 0.9em; opacity: 0.8;">This may take a moment on first load</p>
+        </div>
+        <canvas id="canvas" style="display: none;"></canvas>
+    </div>
+
+    <div id="controls">
+        <h3>Controls</h3>
+        <div class="control-item">
+            <span class="key">SPACE</span> Jump / Double Jump / Helicopter Glide
+        </div>
+        <div class="control-item">
+            <span class="key">ESC</span> Pause / Quit
+        </div>
+    </div>
+
+    <div id="footer">
+        <p>Built with Python & Pygame | <a href="https://github.com/anthropics/claude-code" target="_blank">Hosted on GitHub Pages</a></p>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAGCeQ-kAt5xXTQwJr2f7xenZ-t3urfGN8",
+            authDomain: "dashy-dude-game.firebaseapp.com",
+            databaseURL: "https://dashy-dude-game-default-rtdb.firebaseio.com",
+            projectId: "dashy-dude-game",
+            storageBucket: "dashy-dude-game.firebasestorage.app",
+            messagingSenderId: "18111768754",
+            appId: "1:18111768754:web:ca276edf2c9d27b2e241ab"
+        };
+
+        // Initialize Firebase
+        let firebaseInitialized = false;
+        if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                window.firebaseDB = firebase.database();
+                firebaseInitialized = true;
+                console.log("Firebase initialized successfully");
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                window.firebaseDB = null;
+            }
+        } else {
+            console.log("Firebase not configured - using local storage only");
+            window.firebaseDB = null;
+        }
+
+        // Helper functions for Python to call via Pygbag
+        window.dashyDude = {
+            // Check if Firebase is available
+            isFirebaseAvailable: function() {
+                return firebaseInitialized && window.firebaseDB !== null;
+            },
+
+            // Save high score to Firebase
+            saveHighScore: async function(scoreData) {
+                if (!firebaseInitialized) {
+                    console.log("Firebase not available, skipping cloud save");
+                    return false;
+                }
+
+                try {
+                    const scoresRef = window.firebaseDB.ref('high_scores');
+                    const newScoreRef = scoresRef.push();
+                    await newScoreRef.set({
+                        score: scoreData.score,
+                        name: scoreData.name || "Player",
+                        date: scoreData.date,
+                        stats: scoreData.stats || {},
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    console.log("High score saved to Firebase:", scoreData.score);
+                    return true;
+                } catch (error) {
+                    console.error("Error saving to Firebase:", error);
+                    return false;
+                }
+            },
+
+            // Get top N high scores from Firebase
+            getTopScores: async function(limit = 10) {
+                if (!firebaseInitialized) {
+                    console.log("Firebase not available");
+                    return [];
+                }
+
+                try {
+                    const scoresRef = window.firebaseDB.ref('high_scores');
+                    const snapshot = await scoresRef.orderByChild('score')
+                        .limitToLast(limit * 2) // Get more than needed to filter
+                        .once('value');
+
+                    const scores = [];
+                    snapshot.forEach(function(childSnapshot) {
+                        scores.push(childSnapshot.val());
+                    });
+
+                    // Sort by score descending and take top N
+                    scores.sort((a, b) => b.score - a.score);
+                    return scores.slice(0, limit);
+                } catch (error) {
+                    console.error("Error fetching from Firebase:", error);
+                    return [];
+                }
+            },
+
+            // Clean up old scores (keep top 100)
+            cleanupOldScores: async function() {
+                if (!firebaseInitialized) return;
+
+                try {
+                    const scoresRef = window.firebaseDB.ref('high_scores');
+                    const snapshot = await scoresRef.once('value');
+
+                    const scores = [];
+                    snapshot.forEach(function(childSnapshot) {
+                        scores.push({
+                            key: childSnapshot.key,
+                            score: childSnapshot.val().score
+                        });
+                    });
+
+                    // Keep top 100, delete the rest
+                    scores.sort((a, b) => b.score - a.score);
+                    const toDelete = scores.slice(100);
+
+                    for (const item of toDelete) {
+                        await scoresRef.child(item.key).remove();
+                    }
+
+                    console.log("Cleaned up", toDelete.length, "old scores");
+                } catch (error) {
+                    console.error("Error cleaning up scores:", error);
+                }
+            }
+        };
+
+        // Hide loading screen when game loads
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('canvas').style.display = 'block';
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

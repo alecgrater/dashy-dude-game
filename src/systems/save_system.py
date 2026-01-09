@@ -1,10 +1,19 @@
 """
 High score and statistics persistence system.
+Supports both local storage (localStorage on web, files on desktop)
+and Firebase global leaderboard on web.
 """
 import json
 import os
+import sys
+import asyncio
 from datetime import datetime
 from typing import List, Dict, Optional, Any
+
+
+def is_web_platform() -> bool:
+    """Check if running in web browser via Pygbag."""
+    return sys.platform == "emscripten"
 
 
 class HighScoreEntry:
@@ -54,7 +63,7 @@ class SaveSystem:
     def __init__(self, save_file: str = "data/high_scores.json", settings_file: str = "data/settings.json"):
         """
         Initialize save system.
-        
+
         Args:
             save_file: Path to high scores and statistics file
             settings_file: Path to settings and customization file
@@ -68,6 +77,22 @@ class SaveSystem:
         self.settings: Dict = {}  # Store game settings
         self.run_history: List[Dict] = []  # Store detailed run history
         self.all_time_stats: Dict = {}  # Store aggregated all-time statistics
+        self.is_web = is_web_platform()  # Check if running in browser
+        self.firebase_client = None  # Firebase client for global leaderboard
+
+        if self.is_web:
+            print("Running in web mode - using localStorage for persistence")
+            # Try to initialize Firebase client for global leaderboard
+            try:
+                from .firebase_client import get_firebase_client
+                self.firebase_client = get_firebase_client()
+                if self.firebase_client and self.firebase_client.is_available():
+                    print("Firebase global leaderboard enabled")
+                else:
+                    print("Firebase not configured - local scores only")
+            except Exception as e:
+                print(f"Failed to initialize Firebase: {e}")
+
         self.load()
     
     def load(self):
@@ -76,13 +101,39 @@ class SaveSystem:
         self._load_settings()
     
     def _load_scores(self):
-        """Load high scores and statistics from file."""
+        """Load high scores and statistics from file or localStorage."""
+        # Web mode: use localStorage
+        if self.is_web:
+            try:
+                import platform
+                if hasattr(platform, 'window') and hasattr(platform.window.localStorage, 'getItem'):
+                    data_str = platform.window.localStorage.getItem('dashy_dude_scores')
+                    if data_str:
+                        data = json.loads(data_str)
+                        self.high_scores = [
+                            HighScoreEntry.from_dict(entry)
+                            for entry in data.get('scores', [])
+                        ]
+                        self.high_scores.sort(key=lambda x: x.score, reverse=True)
+                        self.high_scores = self.high_scores[:self.max_scores]
+                        self.run_history = data.get('run_history', [])
+                        self.all_time_stats = data.get('all_time_stats', {})
+                        return
+            except Exception as e:
+                print(f"Error loading from localStorage: {e}")
+
+            self.high_scores = []
+            self.run_history = []
+            self.all_time_stats = {}
+            return
+
+        # Desktop mode: use file system
         if not os.path.exists(self.save_file):
             self.high_scores = []
             self.run_history = []
             self.all_time_stats = {}
             return
-        
+
         try:
             with open(self.save_file, 'r') as f:
                 data = json.load(f)
@@ -105,12 +156,31 @@ class SaveSystem:
             self.all_time_stats = {}
     
     def _load_settings(self):
-        """Load settings and customization from file."""
+        """Load settings and customization from file or localStorage."""
+        # Web mode: use localStorage
+        if self.is_web:
+            try:
+                import platform
+                if hasattr(platform, 'window') and hasattr(platform.window.localStorage, 'getItem'):
+                    data_str = platform.window.localStorage.getItem('dashy_dude_settings')
+                    if data_str:
+                        data = json.loads(data_str)
+                        self.customization = data.get('customization', {})
+                        self.settings = data.get('settings', {})
+                        return
+            except Exception as e:
+                print(f"Error loading settings from localStorage: {e}")
+
+            self.customization = {}
+            self.settings = {}
+            return
+
+        # Desktop mode: use file system
         if not os.path.exists(self.settings_file):
             self.customization = {}
             self.settings = {}
             return
-        
+
         try:
             with open(self.settings_file, 'r') as f:
                 data = json.load(f)
@@ -126,33 +196,61 @@ class SaveSystem:
         self._save_scores()
     
     def _save_scores(self):
-        """Save high scores and statistics to file."""
+        """Save high scores and statistics to file or localStorage."""
+        data = {
+            'scores': [entry.to_dict() for entry in self.high_scores],
+            'run_history': self.run_history,
+            'all_time_stats': self.all_time_stats,
+            'last_updated': datetime.now().isoformat()
+        }
+
+        # Web mode: use localStorage
+        if self.is_web:
+            try:
+                import platform
+                if hasattr(platform, 'window') and hasattr(platform.window.localStorage, 'setItem'):
+                    data_str = json.dumps(data)
+                    platform.window.localStorage.setItem('dashy_dude_scores', data_str)
+                    return
+            except Exception as e:
+                print(f"Error saving to localStorage: {e}")
+            return
+
+        # Desktop mode: use file system
         try:
             # Ensure data directory exists
             os.makedirs(os.path.dirname(self.save_file), exist_ok=True)
-            
-            data = {
-                'scores': [entry.to_dict() for entry in self.high_scores],
-                'run_history': self.run_history,
-                'all_time_stats': self.all_time_stats,
-                'last_updated': datetime.now().isoformat()
-            }
+
             with open(self.save_file, 'w') as f:
                 json.dump(data, f, indent=2)
         except IOError as e:
             print(f"Error saving high scores: {e}")
     
     def _save_settings(self):
-        """Save settings and customization to file."""
+        """Save settings and customization to file or localStorage."""
+        data = {
+            'customization': self.customization,
+            'settings': self.settings,
+            'last_updated': datetime.now().isoformat()
+        }
+
+        # Web mode: use localStorage
+        if self.is_web:
+            try:
+                import platform
+                if hasattr(platform, 'window') and hasattr(platform.window.localStorage, 'setItem'):
+                    data_str = json.dumps(data)
+                    platform.window.localStorage.setItem('dashy_dude_settings', data_str)
+                    return
+            except Exception as e:
+                print(f"Error saving settings to localStorage: {e}")
+            return
+
+        # Desktop mode: use file system
         try:
             # Ensure data directory exists
             os.makedirs(os.path.dirname(self.settings_file), exist_ok=True)
-            
-            data = {
-                'customization': self.customization,
-                'settings': self.settings,
-                'last_updated': datetime.now().isoformat()
-            }
+
             with open(self.settings_file, 'w') as f:
                 json.dump(data, f, indent=2)
         except IOError as e:
@@ -161,26 +259,79 @@ class SaveSystem:
     def add_score(self, score: int, name: str = "Player", stats: Dict = None) -> bool:
         """
         Add a new score to the high score list.
-        
+        Also pushes to Firebase global leaderboard if in web mode.
+
         Args:
             score: Final score achieved
             name: Player name
             stats: Dictionary of game statistics
-        
+
         Returns:
             True if score made it to the high score list
         """
         entry = HighScoreEntry(score, name, stats=stats)
-        
-        # Check if score qualifies
+
+        # Check if score qualifies for local high scores
+        is_high_score = False
         if len(self.high_scores) < self.max_scores or score > self.high_scores[-1].score:
             self.high_scores.append(entry)
             self.high_scores.sort(key=lambda x: x.score, reverse=True)
             self.high_scores = self.high_scores[:self.max_scores]
             self.save()
-            return True
-        
-        return False
+            is_high_score = True
+
+        # If in web mode with Firebase, also push to global leaderboard
+        # This happens asynchronously and doesn't block the game
+        if self.is_web and self.firebase_client:
+            try:
+                # Create async task to save to Firebase (non-blocking)
+                asyncio.create_task(self._push_to_firebase(entry.to_dict()))
+            except Exception as e:
+                print(f"Failed to schedule Firebase push: {e}")
+
+        return is_high_score
+
+    async def _push_to_firebase(self, score_dict: Dict) -> None:
+        """
+        Internal method to push score to Firebase (async).
+
+        Args:
+            score_dict: Score entry as dictionary
+        """
+        try:
+            if self.firebase_client:
+                success = await self.firebase_client.save_high_score(score_dict)
+                if success:
+                    print(f"Score {score_dict['score']} uploaded to global leaderboard")
+        except Exception as e:
+            print(f"Error pushing to Firebase: {e}")
+
+    def get_global_leaderboard(self, limit: int = 10) -> List[Dict]:
+        """
+        Get global leaderboard from Firebase (blocking).
+        This should be called from async context or use asyncio.run().
+
+        Args:
+            limit: Number of top scores to retrieve
+
+        Returns:
+            List of score dictionaries from Firebase
+        """
+        if not self.is_web or not self.firebase_client:
+            return []
+
+        try:
+            # Run async function synchronously
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is already running, create a task instead
+                # This is a fallback and may not return immediately
+                return []
+            else:
+                return loop.run_until_complete(self.firebase_client.get_top_scores(limit))
+        except Exception as e:
+            print(f"Error fetching global leaderboard: {e}")
+            return []
     
     def add_run(self, run_stats: Dict) -> None:
         """

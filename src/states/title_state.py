@@ -390,32 +390,34 @@ class TitleState(BaseState):
     def _render_high_score(self, screen):
         """Render high score display with top 5 scores in top right corner."""
         high_scores = self.save_system.get_scores()
-        
+
         if not high_scores:
             return
-        
+
         # Title
         title_font = pygame.font.Font(None, 36)
-        title_text = "HIGH SCORES"
+        title_text = "LEADERBOARD"
         title_surface = title_font.render(title_text, True, UI_ACCENT)
         title_shadow = title_font.render(title_text, True, UI_TEXT_SHADOW)
-        
+
         # Position in top right corner
         title_x = SCREEN_WIDTH - title_surface.get_width() - 30
         title_y = 30
-        
+
         screen.blit(title_shadow, (title_x + 2, title_y + 2))
         screen.blit(title_surface, (title_x, title_y))
-        
-        # Display top 5 scores
+
+        # Display top 5 scores with names
         score_font = pygame.font.Font(None, 24)
+        name_font = pygame.font.Font(None, 20)
         y_offset = title_y + 40
-        
+
         for i, entry in enumerate(high_scores[:5]):
-            # Rank and score
+            # Rank, name, and score
             rank_text = f"#{i+1}"
+            name_text = entry.name[:10]  # Truncate long names
             score_text = f"{entry.score}"
-            
+
             # Color based on rank
             if i == 0:
                 color = (255, 215, 0)  # Gold
@@ -425,24 +427,29 @@ class TitleState(BaseState):
                 color = (205, 127, 50)  # Bronze
             else:
                 color = UI_TEXT
-            
+
             # Render rank
             rank_surface = score_font.render(rank_text, True, color)
             rank_shadow = score_font.render(rank_text, True, UI_TEXT_SHADOW)
-            rank_x = SCREEN_WIDTH - 180
-            
+            rank_x = SCREEN_WIDTH - 250
+
             screen.blit(rank_shadow, (rank_x + 1, y_offset + 1))
             screen.blit(rank_surface, (rank_x, y_offset))
-            
-            # Render score
+
+            # Render name (slightly smaller and offset down)
+            name_surface = name_font.render(name_text, True, (180, 180, 180))
+            name_x = SCREEN_WIDTH - 190
+            screen.blit(name_surface, (name_x, y_offset + 2))
+
+            # Render score (right-aligned)
             score_surface = score_font.render(score_text, True, color)
             score_shadow = score_font.render(score_text, True, UI_TEXT_SHADOW)
-            score_x = SCREEN_WIDTH - 120
-            
+            score_x = SCREEN_WIDTH - 30 - score_surface.get_width()
+
             screen.blit(score_shadow, (score_x + 1, y_offset + 1))
             screen.blit(score_surface, (score_x, y_offset))
-            
-            y_offset += 28
+
+            y_offset += 30
     
     def _render_controls(self, screen):
         """Render control instructions with epic styled box."""
