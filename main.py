@@ -20,7 +20,7 @@ from src.game import Game
 
 
 async def main():
-    """Main entry point."""
+    """Main entry point - async for web compatibility."""
     print("=" * 50)
     print("DASHY DUDE")
     print("=" * 50)
@@ -40,5 +40,6 @@ async def main():
     print("Thanks for playing!")
 
 
+# Entry point
 if __name__ == "__main__":
     asyncio.run(main())
